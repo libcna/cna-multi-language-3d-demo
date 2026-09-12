@@ -1,0 +1,60 @@
+# Build output
+build/
+dist/
+out/
+bin/
+obj/
+target/
+.cache/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# C and C++
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+compile_commands.json
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/
+
+# Java, C#, and .NET
+*.class
+*.jar
+*.pdb
+*.user
+*.suo
+packages/
+
+# JavaScript and TypeScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Rust, Go, Swift, Ruby, and Common Lisp
+Cargo.lock
+*.rlib
+vendor/
+*.test
+.build/
+.bundle/
+*.fasl
+
+# OS files
+.DS_Store
+Thumbs.db
