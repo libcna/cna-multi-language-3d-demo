@@ -17,20 +17,22 @@ input.
 
 ## Input and update
 
-An input frame contains `move_x`, `move_z` in `[-1, 1]`, and boolean `boost`
-and `restart` values. Values outside the range are clamped. An update receives
-seconds, clamps negative values to zero and each frame to `0.25`, then moves
-the courier at `4` units/second, or `7` units/second while boosting. Movement
-is clamped to the arena. The simulation is frame-rate independent; callers
-that need a fixed step should submit repeated `1/60` updates.
+An input frame contains `turn` and `forward` in `[-1, 1]`, and boolean `boost`
+and `restart` values. Values outside the range are clamped. Turn changes the
+player heading at 180 degrees/second; heading zero faces world `-Z`. Forward
+movement follows that heading at `4` units/second, or `7` units/second while
+boosting. An update clamps seconds to `0..0.25` and movement to the arena. The
+simulation is frame-rate independent; callers that need a fixed step should
+submit repeated `1/60` updates.
 
 ## Objects and scoring
 
 Energy cells have centers `(-6, 0)`, `(0, -5)`, and `(6, 0)` and a collection
-radius of `0.9`. The moving hazard has radius `1.0`, starts at `(0, 3)`, and
-travels on the X axis between `-7` and `7` at `2` units/second. A courier
-collision radius is `0.75`; touching a hazard (distance at most `1.75`) changes
-the state to `Lost`. The time limit is `60` seconds and also causes `Lost`.
+radius of `0.9`. The primary moving hazard has radius `1.0`, starts at `(0, 3)`,
+and travels on the X axis between `-7` and `7` at `2` units/second. The second
+hazard follows the opposite X phase at `Z=-3.5`. A courier collision radius is
+`0.75`; touching either hazard (distance at most `1.75`) changes the state to
+`Lost`. The time limit is `60` seconds and also causes `Lost`.
 
 After all three cells are collected, entering the extraction ring (distance at
 most `1.4`) changes the state to `Won`. A cell is worth `100` points and a win
@@ -42,13 +44,14 @@ states. A loss never awards the win bonus.
 Each snapshot is serialized as:
 
 ```text
-state mask x z elapsed score
+state mask x z elapsed score heading hazard_x secondary_hazard_x
 ```
 
-with state as the integer above and decimal floats. Required scenario names
-are `startup`, `collection`, `hazard`, `win`, `loss`, and `restart`. Ports may
-provide a native runner, but the result must contain the same fields and
-values within `1e-4` for floating-point values.
+with state as the integer above and decimal floats. The legacy six-field
+prefix remains stable while graphical ports are being brought up. Required
+scenario names are `startup`, `collection`, `hazard`, `win`, `loss`, and
+`restart`. Ports may provide a native runner, but the result must contain the
+same fields and values within `1e-4` for floating-point values.
 
 The renderer may use XNA 4.0 concepts (`GameTime`, `Vector3`, `Matrix`,
 `Model`, effects, vertex/index buffers, textures, `SpriteBatch`, and input

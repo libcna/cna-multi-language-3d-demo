@@ -1,14 +1,15 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 
 namespace starfield {
 
 enum class State : std::uint32_t { Title = 0, Playing = 1, Won = 2, Lost = 3 };
 
 struct Input {
-    float move_x = 0.0f;
-    float move_z = 0.0f;
+    float turn = 0.0f;
+    float forward = 0.0f;
     bool boost = false;
     bool restart = false;
 };
@@ -20,6 +21,9 @@ struct Snapshot {
     float z = 0.0f;
     float elapsed = 0.0f;
     float score = 0.0f;
+    float heading = 0.0f;
+    float hazard_x = 0.0f;
+    float secondary_hazard_x = 0.0f;
 };
 
 class Game {
@@ -37,9 +41,14 @@ private:
     float z_ = 0.0f;
     float elapsed_ = 0.0f;
     float score_ = 0.0f;
+    float heading_ = 0.0f;
     float hazard_x_ = 0.0f;
     float hazard_direction_ = 1.0f;
 };
+
+// Runs one of the deterministic verification scenarios from the shared spec.
+// Returns false without modifying the game when the name is unknown.
+bool run_scenario(Game& game, std::string_view name);
 
 class Renderer {
 public:

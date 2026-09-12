@@ -42,14 +42,18 @@ demo and a short build/run guide:
 The C++ version is the visual reference. With `STARFIELD_ENABLE_CNA=ON`,
 `cpp/starfield_cna` is an XNA-shaped `Microsoft.Xna.Framework.Game` subclass
 linked to CNA's `cna_runtime`; it creates a BasicEffect, perspective camera,
-procedural colored 3D geometry, and a playable CNA game loop. The remaining
-language directories are not graphical ports yet and are tracked as such.
+procedural colored 3D geometry, a compact indicator HUD, and a playable CNA
+game loop with heading-relative controls. The remaining language directories
+are not graphical ports yet and are tracked as such.
 
 ## Development status
 
-The repository contains the initial CNA-backed C++ graphical reference and
-prototype code awaiting replacement. Only a build and finite-frame EasyGL
-smoke test has been verified so far; no non-C++ language is claimed graphical.
+The CNA-backed C++ graphical reference is implemented and runtime-verified on
+Linux with EasyGL's `OPENGL33` and `OPENGLES3` profiles. Its deterministic
+gameplay tests use real assertions, and its CNA tests validate expected game
+states plus a 1280x720 frame containing the required arena, grid, boundary,
+player, hazard, and HUD colors. No non-C++ language is claimed graphical; C
+remains a clear-only CNA lifecycle/ABI smoke test.
 
 ## Binding status
 
@@ -57,8 +61,9 @@ The following statements are deliberately precise:
 
 - The optional CMake integration consumes the real CNA tree from `../cna`.
   `starfield_cna` uses CNA's C++ XNA-compatible `Game`, `BasicEffect`, typed
-  primitive drawing, input, and `GraphicsDevice::Clear`. The C program is not
-  graphical yet; its ABI smoke test remains supplemental evidence only.
+  primitive drawing, input, perspective matrices, depth state, and render
+  targets. The C program is not graphical yet; its ABI smoke test remains
+  supplemental evidence only.
 - The optional C# probe consumes the real `CNA.XnaCompat` project from
   `../cna-cs` and compiles an XNA-shaped `Microsoft.Xna.Framework.Vector3`.
   The headless C# gameplay runner is still independent of that binding.
@@ -81,7 +86,10 @@ independent of it.
 The verified CNA-enabled build uses the neighboring CNA checkout:
 
 ```sh
-cmake -S . -B build/cna-demo -DSTARFIELD_ENABLE_CNA=ON -DCNA_ROOT=../cna
+cmake -S . -B build/cna-demo \
+  -DSTARFIELD_ENABLE_CNA=ON -DCNA_SOURCE_DIR=../cna \
+  -DCNA_GRAPHICS_RENDERER=OPENGL33 \
+  -DCNA_GRAPHICS_RENDERERS="OPENGL33;OPENGLES3"
 cmake --build build/cna-demo --target starfield_cna
 ./build/cna-demo/cpp/starfield_cna
 ```
@@ -89,13 +97,32 @@ cmake --build build/cna-demo --target starfield_cna
 For a finite initialization/render smoke test:
 
 ```sh
-./build/cna-demo/cpp/starfield_cna --frames 1
+SDL_VIDEODRIVER=offscreen \
+  ./build/cna-demo/cpp/starfield_cna --frames 1 --validate-frame
+```
+
+Run the assertion-backed C++ gameplay and graphical tests:
+
+```sh
+ctest --test-dir build/cna-demo -L cpp --output-on-failure
+```
+
+Capture a deterministic scenario frame (PPM keeps the runner dependency-free):
+
+```sh
+SDL_VIDEODRIVER=offscreen CNA_GRAPHICS_RENDERER=OPENGL33 \
+  ./build/cna-demo/cpp/starfield_cna --scenario win \
+  --validate-frame --screenshot build/cna-demo/starfield-win.ppm
+
+SDL_VIDEODRIVER=offscreen CNA_GRAPHICS_RENDERER=OPENGLES3 \
+  ./build/cna-demo/cpp/starfield_cna --scenario win \
+  --validate-frame --screenshot build/cna-demo/starfield-win-gles.ppm
 ```
 
 To build and run the CNA-backed C++ and C demos (requires `../cna`):
 
 ```sh
-cmake -S . -B build/cna-demo -DSTARFIELD_ENABLE_CNA=ON -DCNA_ROOT=../cna
+cmake -S . -B build/cna-demo -DSTARFIELD_ENABLE_CNA=ON -DCNA_SOURCE_DIR=../cna
 cmake --build build/cna-demo --target starfield_cna cna_starfield_c cna_c_api_consumer_smoke
 build/cna-demo/cpp/starfield_cna --frames 3
 build/cna-demo/c/cna_starfield_c --frames 3
@@ -109,9 +136,12 @@ dotnet build cs/Starfield.csproj -c Release \
   -p:UseCnaCs=true -p:CnaCsRoot="$PWD/../cna-cs"
 ```
 
-The finite-frame run verified CNA initialization and the EasyGL renderer on
-Linux. A passing headless scenario is never evidence that a language binding
-or graphical renderer is in use; graphical status is maintained in `plan.md`.
+The finite-frame runs verified CNA initialization, rendering, readback, and
+expected scenario state on Linux. The graphical runner supports `startup`,
+`collection`, `hazard`, `win`, `loss`, and `restart`; scripted mode freezes the
+result for deterministic capture and does not replace normal interactive play.
+A passing headless scenario is never evidence that a language binding or a
+graphical renderer is in use; graphical status is maintained in `plan.md`.
 
 ## License
 
