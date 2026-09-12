@@ -39,8 +39,8 @@ must remain the lifecycle and ownership boundary. These are not acceptable:
 - `Initialize` establishes the initial run state and camera.
 - `LoadContent` creates graphics/content resources through XNA-style APIs.
 - `Update(GameTime)` calls `Keyboard::GetState`, handles quit/restart, advances
-  player movement and heading, hazards, collectibles, collision, score, timer,
-  win/loss, and camera.
+  player movement and heading, sector-specific hazards, collectibles,
+  collisions, sector transitions, score, timer, win/loss, and camera.
 - `Draw(GameTime)` applies the perspective camera, depth state, effect, world
   matrices, and HUD projection to render the fields owned by that game.
 - The executable enters ordinary `Game::Run()`. Finite graphical tests may
@@ -77,8 +77,8 @@ and EasyGL/OpenGLES3.
 Tests must fail when gameplay results are wrong, not only when a process exits
 nonzero. Unit access may call the same private gameplay step owned and used by
 the real game class; it must not reproduce that step in a test-only engine.
-At least one integration test must run the actual graphical executable through
-`Game::Run()` and inspect a real rendered frame. Screenshot comparisons must
+Integration tests must run every sector of the actual graphical executable
+through `Game::Run()` and inspect real rendered frames. Screenshot comparisons must
 use pixels read from the actual game render, never generated reference data.
 
 A port is complete only after its real window, input, simulation, rendering,

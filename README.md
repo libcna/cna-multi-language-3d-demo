@@ -46,12 +46,16 @@ renderer branch in the game source.
 
 ## Game
 
-**CNA Starfield Courier** places a courier drone in a bounded 20×20 arena.
-Collect three gold energy cells, avoid two moving red hazards, and enter the
-green extraction gate before the 60-second timer expires. The scene has a
+**CNA Starfield Courier** is now a compact three-sector campaign. In each
+bounded 20×20 arena, collect three gold energy cells, avoid moving hazards,
+and enter the green extraction gate before that sector's 60-second timer
+expires. Starport has crossing patrols, Ion Basin adds a vertical sweeper and
+an orbital drone, and Solar Forge combines all three enemy motion types at
+higher speed. Each sector has its own palette, layout, gate, and boundary
+landmarks. The scene has a
 perspective heading-relative chase camera, visible floor grid and boundaries,
 procedural meshes, depth testing, and a compact HUD showing cells, time, run
-state, and score. Collection, loss, victory, and restart have short original
+state, sector, and score. Collection, loss, victory, and restart have short original
 sound cues loaded through XNA `SoundEffect`. A quiet CC0 ambient space loop
 plays continuously through XNA `Song` and `MediaPlayer`.
 
@@ -99,6 +103,10 @@ SDL_VIDEODRIVER=offscreen CNA_GRAPHICS_RENDERER=OPENGLES3 \
   ./build/cna-game/cpp/starfield_cpp --smoke-frames 1 \
   --validate-frame --screenshot build/cna-game/starfield-opengles3.ppm
 ```
+
+For renderer QA, append `--start-sector 1`, `2`, or `3` to capture a specific
+environment. This still runs that sector through ordinary `Game::Run()`; it is
+not a separate simulation path.
 
 Smoke mode still calls ordinary `Game::Run()` and exits from `Draw` after the
 requested number of frames. It validates real CNA rendering; it is not a

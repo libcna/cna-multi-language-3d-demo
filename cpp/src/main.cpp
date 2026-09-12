@@ -50,6 +50,16 @@ namespace
             {
                 options.validateFrame = true;
             }
+            else if (argument == "--start-sector" && index + 1 < argc)
+            {
+                int sector = 0;
+                if (!ParsePositive(argv[++index], sector) ||
+                    sector > starfield::SectorCount)
+                {
+                    return false;
+                }
+                options.startSector = sector - 1;
+            }
             else
             {
                 return false;
@@ -87,7 +97,8 @@ int main(int argc, char** argv)
     if (!ParseOptions(argc, argv, options))
     {
         std::cerr << "usage: starfield_cpp [--smoke-frames COUNT] "
-                     "[--validate-frame] [--screenshot FILE.ppm]\n";
+                     "[--validate-frame] [--screenshot FILE.ppm] "
+                     "[--start-sector 1|2|3]\n";
         return 2;
     }
     options.contentRoot =
@@ -99,11 +110,17 @@ int main(int argc, char** argv)
     std::cout << "starfield-cpp state=" << StateName(game.runState())
               << " collected=" << game.collectedCount()
               << " score=" << game.score()
+              << " sector=" << game.sectorIndex() + 1
               << " frame_valid=" << (game.frameValid() ? "true" : "false")
               << " player_x=" << game.player().position.X
               << " player_z=" << game.player().position.Z
               << " heading=" << game.player().heading
               << " hazard0_x=" << game.hazards()[0].position.X
-              << " hazard1_x=" << game.hazards()[1].position.X << '\n';
+              << " hazard0_z=" << game.hazards()[0].position.Z
+              << " hazard1_x=" << game.hazards()[1].position.X
+              << " hazard1_z=" << game.hazards()[1].position.Z
+              << " hazard2_active=" << (game.hazards()[2].active ? "true" : "false")
+              << " hazard2_x=" << game.hazards()[2].position.X
+              << " hazard2_z=" << game.hazards()[2].position.Z << '\n';
     return game.frameValid() ? 0 : 1;
 }

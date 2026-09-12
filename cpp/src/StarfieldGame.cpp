@@ -50,6 +50,43 @@ namespace starfield
         constexpr float HazardCollisionRadius = 1.75f;
         constexpr float ExtractionRadius = 1.4f;
         constexpr float TimeLimit = 60.0f;
+        constexpr int SectorBonus = 500;
+        constexpr int FinalMissionBonus = 1000;
+
+        struct SectorTheme
+        {
+            Color sky;
+            Color floor;
+            Color grid;
+            Color boundary;
+            Color accent;
+        };
+
+        SectorTheme ThemeForSector(int sectorIndex)
+        {
+            switch (sectorIndex)
+            {
+            case 1:
+                return {Color(13, 5, 27), Color(55, 30, 85), Color(130, 65, 150),
+                        Color(30, 220, 220), Color(205, 80, 255)};
+            case 2:
+                return {Color(25, 5, 8), Color(72, 27, 25), Color(150, 58, 35),
+                        Color(255, 185, 35), Color(255, 75, 35)};
+            default:
+                return {Color(4, 10, 30), Color(25, 45, 90), Color(55, 90, 135),
+                        Color(255, 120, 20), Color(0, 175, 225)};
+            }
+        }
+
+        const char* SectorName(int sectorIndex)
+        {
+            switch (sectorIndex)
+            {
+            case 1: return "ION BASIN";
+            case 2: return "SOLAR FORGE";
+            default: return "STARPORT";
+            }
+        }
 
         float DistanceSquaredXZ(const Vector3& left, const Vector3& right)
         {
@@ -186,7 +223,7 @@ namespace starfield
         return player_;
     }
 
-    const std::array<Hazard, 2>& StarfieldGame::hazards() const noexcept
+    const std::array<Hazard, 3>& StarfieldGame::hazards() const noexcept
     {
         return hazards_;
     }
@@ -223,6 +260,16 @@ namespace starfield
             [](const Collectible& collectible) { return collectible.collected; }));
     }
 
+    int StarfieldGame::sectorIndex() const noexcept
+    {
+        return sectorIndex_;
+    }
+
+    const Vector3& StarfieldGame::extractionPosition() const noexcept
+    {
+        return extractionPosition_;
+    }
+
     bool StarfieldGame::frameValid() const noexcept
     {
         return frameValid_;
@@ -231,6 +278,12 @@ namespace starfield
     void StarfieldGame::Initialize()
     {
         ResetGameplay();
+        if (options_.startSector > 0)
+        {
+            LoadSector(std::clamp(options_.startSector, 0, SectorCount - 1));
+            runState_ = RunState::Title;
+            score_ = 0;
+        }
         xna::Game::Initialize();
     }
 
@@ -317,7 +370,7 @@ namespace starfield
         }
 
         device.setBlendStateProperty(xna::Graphics::BlendState::Opaque);
-        device.Clear(Color(4, 10, 30));
+        device.Clear(ThemeForSector(sectorIndex_).sky);
         device.setRasterizerStateProperty(xna::Graphics::RasterizerState::CullNone);
         DrawWorld();
         DrawHud();
@@ -340,16 +393,73 @@ namespace starfield
     void StarfieldGame::ResetGameplay()
     {
         runState_ = RunState::Title;
-        player_ = Player{Vector3(0.0f, 0.6f, 0.0f), 0.0f};
-        hazards_ = {
-            Hazard{Vector3(0.0f, 0.8f, 3.0f), HazardSpeed},
-            Hazard{Vector3(0.0f, 0.6f, -3.5f), -HazardSpeed}};
-        collectibles_ = {
-            Collectible{Vector3(-6.0f, 0.7f, 0.0f), false},
-            Collectible{Vector3(0.0f, 0.7f, -5.0f), false},
-            Collectible{Vector3(6.0f, 0.7f, 0.0f), false}};
-        elapsedSeconds_ = 0.0f;
         score_ = 0;
+        LoadSector(0);
+    }
+
+    void StarfieldGame::LoadSector(int sectorIndex)
+    {
+        sectorIndex_ = std::clamp(sectorIndex, 0, SectorCount - 1);
+        elapsedSeconds_ = 0.0f;
+        sectorBannerSeconds_ = 2.4f;
+
+        const Hazard inactive{
+            Vector3::Zero, Vector3::Zero, Vector3::Zero,
+            HazardMotion::Horizontal, 0.0f, 0.0f, false};
+
+        switch (sectorIndex_)
+        {
+        case 1:
+            player_ = Player{Vector3(0.0f, 0.6f, 8.0f), 0.0f};
+            extractionPosition_ = Vector3(8.0f, 0.0f, -8.0f);
+            collectibles_ = {
+                Collectible{Vector3(-7.0f, 0.7f, 6.0f), false},
+                Collectible{Vector3(7.0f, 0.7f, -1.0f), false},
+                Collectible{Vector3(-5.0f, 0.7f, -6.0f), false}};
+            hazards_ = {
+                Hazard{Vector3(-2.0f, 0.8f, 0.0f), Vector3(-2.0f, 0.8f, 0.0f),
+                       Vector3(0.0f, 0.0f, HazardSpeed), HazardMotion::Vertical,
+                       0.0f, 7.0f, true},
+                Hazard{Vector3(0.0f, 0.7f, -2.0f), Vector3(0.0f, 0.7f, -2.0f),
+                       Vector3(-HazardSpeed, 0.0f, 0.0f), HazardMotion::Horizontal,
+                       0.0f, 7.0f, true},
+                Hazard{Vector3(4.5f, 0.9f, 2.0f), Vector3(2.0f, 0.9f, 2.0f),
+                       Vector3::Zero, HazardMotion::Orbit, 0.0f, 2.5f, true}};
+            break;
+        case 2:
+            player_ = Player{Vector3(0.0f, 0.6f, 8.0f), 0.0f};
+            extractionPosition_ = Vector3(-8.0f, 0.0f, -8.0f);
+            collectibles_ = {
+                Collectible{Vector3(-7.0f, 0.7f, -5.0f), false},
+                Collectible{Vector3(0.0f, 0.7f, -6.0f), false},
+                Collectible{Vector3(6.0f, 0.7f, 6.0f), false}};
+            hazards_ = {
+                Hazard{Vector3(0.0f, 0.8f, 4.0f), Vector3(0.0f, 0.8f, 4.0f),
+                       Vector3(HazardSpeed + 0.5f, 0.0f, 0.0f),
+                       HazardMotion::Horizontal, 0.0f, 8.0f, true},
+                Hazard{Vector3(-4.0f, 0.7f, 0.0f), Vector3(-4.0f, 0.7f, 0.0f),
+                       Vector3(0.0f, 0.0f, -HazardSpeed - 0.4f),
+                       HazardMotion::Vertical, 0.0f, 8.0f, true},
+                Hazard{Vector3(6.0f, 1.0f, -3.0f), Vector3(3.0f, 1.0f, -3.0f),
+                       Vector3::Zero, HazardMotion::Orbit, 0.0f, 3.0f, true}};
+            break;
+        default:
+            player_ = Player{Vector3(0.0f, 0.6f, 0.0f), 0.0f};
+            extractionPosition_ = Vector3(0.0f, 0.0f, -9.0f);
+            collectibles_ = {
+                Collectible{Vector3(-6.0f, 0.7f, 0.0f), false},
+                Collectible{Vector3(0.0f, 0.7f, -5.0f), false},
+                Collectible{Vector3(6.0f, 0.7f, 0.0f), false}};
+            hazards_ = {
+                Hazard{Vector3(0.0f, 0.8f, 3.0f), Vector3(0.0f, 0.8f, 3.0f),
+                       Vector3(HazardSpeed, 0.0f, 0.0f),
+                       HazardMotion::Horizontal, 0.0f, 7.0f, true},
+                Hazard{Vector3(0.0f, 0.6f, -3.5f), Vector3(0.0f, 0.6f, -3.5f),
+                       Vector3(-HazardSpeed, 0.0f, 0.0f),
+                       HazardMotion::Horizontal, 0.0f, 7.0f, true},
+                inactive};
+            break;
+        }
         UpdateCamera();
     }
 
@@ -372,6 +482,7 @@ namespace starfield
         }
 
         const float dt = std::clamp(seconds, 0.0f, 0.25f);
+        sectorBannerSeconds_ = std::max(0.0f, sectorBannerSeconds_ - dt);
         player_.heading = std::remainder(
             player_.heading + std::clamp(turn, -1.0f, 1.0f) * TurnSpeed * dt,
             2.0f * Pi);
@@ -388,7 +499,10 @@ namespace starfield
         elapsedSeconds_ += dt;
         for (Hazard& hazard : hazards_)
         {
-            MoveHazard(hazard, dt);
+            if (hazard.active)
+            {
+                MoveHazard(hazard, dt);
+            }
         }
 
         bool collectedThisStep = false;
@@ -407,7 +521,8 @@ namespace starfield
             hazards_.begin(), hazards_.end(),
             [this](const Hazard& hazard)
             {
-                return DistanceSquaredXZ(player_.position, hazard.position) <=
+                return hazard.active &&
+                       DistanceSquaredXZ(player_.position, hazard.position) <=
                        HazardCollisionRadius * HazardCollisionRadius;
             });
         if (hitHazard || elapsedSeconds_ >= TimeLimit)
@@ -418,14 +533,21 @@ namespace starfield
             return;
         }
 
-        const Vector3 extractionPosition(0.0f, 0.0f, -9.0f);
         if (collectedCount() == static_cast<int>(collectibles_.size()) &&
-            DistanceSquaredXZ(player_.position, extractionPosition) <=
+            DistanceSquaredXZ(player_.position, extractionPosition_) <=
                 ExtractionRadius * ExtractionRadius)
         {
+            if (sectorIndex_ + 1 < SectorCount)
+            {
+                score_ += SectorBonus;
+                LoadSector(sectorIndex_ + 1);
+                PlaySound(winSound_.get(), 0.48f, -0.08f);
+                return;
+            }
+
             runState_ = RunState::Won;
-            score_ += 1000;
-            PlaySound(winSound_.get(), 0.62f, 0.0f);
+            score_ += FinalMissionBonus;
+            PlaySound(winSound_.get(), 0.62f, 0.08f);
         }
         else if (collectedThisStep)
         {
@@ -448,16 +570,30 @@ namespace starfield
 
     void StarfieldGame::MoveHazard(Hazard& hazard, float seconds)
     {
-        hazard.position.X += hazard.velocityX * seconds;
-        if (hazard.position.X >= 7.0f)
+        if (hazard.motion == HazardMotion::Orbit)
         {
-            hazard.position.X = 7.0f;
-            hazard.velocityX = -HazardSpeed;
+            hazard.phase = std::remainder(hazard.phase + seconds * 1.35f, 2.0f * Pi);
+            hazard.position.X = hazard.origin.X + std::cos(hazard.phase) * hazard.range;
+            hazard.position.Z = hazard.origin.Z + std::sin(hazard.phase) * hazard.range;
+            return;
         }
-        else if (hazard.position.X <= -7.0f)
+
+        float& coordinate = hazard.motion == HazardMotion::Horizontal
+                                ? hazard.position.X : hazard.position.Z;
+        float& speed = hazard.motion == HazardMotion::Horizontal
+                           ? hazard.velocity.X : hazard.velocity.Z;
+        const float center = hazard.motion == HazardMotion::Horizontal
+                                 ? hazard.origin.X : hazard.origin.Z;
+        coordinate += speed * seconds;
+        if (coordinate >= center + hazard.range)
         {
-            hazard.position.X = -7.0f;
-            hazard.velocityX = HazardSpeed;
+            coordinate = center + hazard.range;
+            speed = -std::abs(speed);
+        }
+        else if (coordinate <= center - hazard.range)
+        {
+            coordinate = center - hazard.range;
+            speed = std::abs(speed);
         }
     }
 
@@ -489,7 +625,10 @@ namespace starfield
 
         for (std::size_t index = 0; index < hazards_.size(); ++index)
         {
-            DrawHazard(device, pass, hazards_[index], index);
+            if (hazards_[index].active)
+            {
+                DrawHazard(device, pass, hazards_[index], index);
+            }
         }
         DrawExtractionGate(device, pass);
     }
@@ -497,13 +636,14 @@ namespace starfield
     void StarfieldGame::DrawStarfield(xna::Graphics::GraphicsDevice& device,
                                       xna::Graphics::EffectPass& pass)
     {
+        const SectorTheme theme = ThemeForSector(sectorIndex_);
         for (int index = 0; index < 52; ++index)
         {
             const float angle = static_cast<float>(index) * 2.3999632f;
             const float radius = 25.0f + static_cast<float>((index * 7) % 11);
             const float height = 3.0f + static_cast<float>((index * 13) % 17);
             const float size = 0.05f + static_cast<float>(index % 4) * 0.025f;
-            const Color color = index % 7 == 0 ? Color(130, 205, 255)
+            const Color color = index % 7 == 0 ? theme.accent
                                                 : Color(190, 210, 235);
             DrawCube(device, pass,
                      Vector3(std::cos(angle) * radius, height,
@@ -515,51 +655,93 @@ namespace starfield
     void StarfieldGame::DrawArena(xna::Graphics::GraphicsDevice& device,
                                   xna::Graphics::EffectPass& pass)
     {
+        const SectorTheme theme = ThemeForSector(sectorIndex_);
         DrawCube(device, pass, Vector3(0.0f, -0.38f, 0.0f),
-                 Vector3(21.0f, 0.6f, 21.0f), Color(7, 17, 40));
+                 Vector3(21.0f, 0.6f, 21.0f), Shade(theme.floor, 0.38f));
         DrawCube(device, pass, Vector3(0.0f, -0.055f, 0.0f),
-                 Vector3(20.0f, 0.08f, 20.0f), Color(25, 45, 90));
+                 Vector3(20.0f, 0.08f, 20.0f), theme.floor);
 
         for (int offset = -10; offset <= 10; offset += 2)
         {
             DrawCube(device, pass, Vector3(static_cast<float>(offset), 0.005f, 0.0f),
-                     Vector3(0.028f, 0.025f, 20.0f), Color(55, 90, 135));
+                     Vector3(0.028f, 0.025f, 20.0f), theme.grid);
             DrawCube(device, pass, Vector3(0.0f, 0.005f, static_cast<float>(offset)),
-                     Vector3(20.0f, 0.025f, 0.028f), Color(55, 90, 135));
+                     Vector3(20.0f, 0.025f, 0.028f), theme.grid);
         }
 
         DrawCube(device, pass, Vector3(0.0f, 0.022f, 0.0f),
-                 Vector3(0.06f, 0.035f, 20.0f), Color(0, 125, 180));
-        DrawCube(device, pass, Vector3(0.0f, 0.024f, -8.9f),
+                 Vector3(0.06f, 0.035f, 20.0f), Shade(theme.accent, 0.72f));
+        DrawCube(device, pass,
+                 Vector3(extractionPosition_.X, 0.024f, extractionPosition_.Z),
                  Vector3(3.8f, 0.04f, 1.7f), Color(15, 68, 64));
-        for (const float laneX : {-1.35f, 1.35f})
+
+        if (sectorIndex_ == 0)
         {
-            DrawCube(device, pass, Vector3(laneX, 0.05f, -7.0f),
-                     Vector3(0.06f, 0.05f, 5.4f), Color(35, 155, 110));
+            for (const float laneX : {-1.35f, 1.35f})
+            {
+                DrawCube(device, pass, Vector3(laneX, 0.05f, -7.0f),
+                         Vector3(0.06f, 0.05f, 5.4f), Color(35, 155, 110));
+            }
+        }
+        else if (sectorIndex_ == 1)
+        {
+            for (const float diagonal : {-5.0f, 0.0f, 5.0f})
+            {
+                DrawCube(device, pass, Vector3(diagonal, 0.035f, diagonal),
+                         Vector3(0.1f, 0.035f, 13.5f),
+                         Shade(theme.accent, 0.7f), -Pi / 4.0f);
+            }
+            for (const float side : {-1.0f, 1.0f})
+            {
+                DrawCube(device, pass, Vector3(side * 11.2f, 2.0f, -6.0f),
+                         Vector3(0.7f, 4.0f, 0.7f), theme.accent,
+                         side * 0.25f);
+                DrawCube(device, pass, Vector3(side * 11.4f, 1.2f, 5.5f),
+                         Vector3(1.0f, 2.4f, 1.0f), theme.boundary,
+                         -side * 0.35f);
+            }
+        }
+        else
+        {
+            for (const float channelX : {-6.0f, -2.0f, 2.0f, 6.0f})
+            {
+                DrawCube(device, pass, Vector3(channelX, 0.035f, 0.0f),
+                         Vector3(0.34f, 0.035f, 19.6f),
+                         channelX == -2.0f || channelX == 2.0f
+                             ? theme.accent : Shade(theme.boundary, 0.7f));
+            }
+            for (const float side : {-1.0f, 1.0f})
+            {
+                for (const float z : {-6.0f, 0.0f, 6.0f})
+                {
+                    DrawCube(device, pass, Vector3(side * 11.35f, 1.45f, z),
+                             Vector3(1.2f, 2.9f, 1.2f), Color(75, 20, 18));
+                    DrawCube(device, pass, Vector3(side * 11.35f, 3.0f, z),
+                             Vector3(0.75f, 0.25f, 0.75f), theme.boundary);
+                }
+            }
         }
 
-        const Color boundaryColor(255, 120, 20);
-        const Color markerColor(255, 180, 50);
         DrawCube(device, pass, Vector3(-10.1f, 0.18f, 0.0f),
-                 Vector3(0.22f, 0.36f, 20.4f), boundaryColor);
+                 Vector3(0.22f, 0.36f, 20.4f), theme.boundary);
         DrawCube(device, pass, Vector3(10.1f, 0.18f, 0.0f),
-                 Vector3(0.22f, 0.36f, 20.4f), boundaryColor);
+                 Vector3(0.22f, 0.36f, 20.4f), theme.boundary);
         DrawCube(device, pass, Vector3(0.0f, 0.18f, -10.1f),
-                 Vector3(20.4f, 0.36f, 0.22f), boundaryColor);
+                 Vector3(20.4f, 0.36f, 0.22f), theme.boundary);
         DrawCube(device, pass, Vector3(0.0f, 0.18f, 10.1f),
-                 Vector3(20.4f, 0.36f, 0.22f), boundaryColor);
+                 Vector3(20.4f, 0.36f, 0.22f), theme.boundary);
         for (const float edge : {-10.0f, 10.0f})
         {
             for (const float offset : {-10.0f, -5.0f, 0.0f, 5.0f, 10.0f})
             {
                 DrawCube(device, pass, Vector3(edge, 0.8f, offset),
-                         Vector3(0.32f, 1.6f, 0.32f), Color(95, 48, 35));
+                         Vector3(0.32f, 1.6f, 0.32f), Shade(theme.boundary, 0.38f));
                 DrawCube(device, pass, Vector3(edge, 1.62f, offset),
-                         Vector3(0.46f, 0.12f, 0.46f), markerColor);
+                         Vector3(0.46f, 0.12f, 0.46f), theme.accent);
                 DrawCube(device, pass, Vector3(offset, 0.8f, edge),
-                         Vector3(0.32f, 1.6f, 0.32f), Color(95, 48, 35));
+                         Vector3(0.32f, 1.6f, 0.32f), Shade(theme.boundary, 0.38f));
                 DrawCube(device, pass, Vector3(offset, 1.62f, edge),
-                         Vector3(0.46f, 0.12f, 0.46f), markerColor);
+                         Vector3(0.46f, 0.12f, 0.46f), theme.accent);
             }
         }
     }
@@ -621,13 +803,36 @@ namespace starfield
         const float spin = presentationSeconds_ * 1.6f * direction;
         const float pulse = 1.0f + 0.1f * std::sin(presentationSeconds_ * 4.0f +
                                                   static_cast<float>(index));
-        const Color red = index == 0 ? Color(230, 40, 50) : Color(255, 55, 70);
-        DrawCube(device, pass, hazard.position,
-                 Vector3(1.15f * pulse, 1.05f, 1.15f * pulse), red, spin);
-        DrawCube(device, pass, hazard.position, Vector3(2.2f, 0.2f, 0.34f),
-                 Color(135, 20, 35), spin);
-        DrawCube(device, pass, hazard.position, Vector3(0.34f, 0.2f, 2.2f),
-                 Color(135, 20, 35), spin);
+        if (hazard.motion == HazardMotion::Horizontal)
+        {
+            const Color red = index == 0 ? Color(230, 40, 50) : Color(255, 55, 70);
+            DrawCube(device, pass, hazard.position,
+                     Vector3(1.15f * pulse, 1.05f, 1.15f * pulse), red, spin);
+            DrawCube(device, pass, hazard.position, Vector3(2.2f, 0.2f, 0.34f),
+                     Color(135, 20, 35), spin);
+            DrawCube(device, pass, hazard.position, Vector3(0.34f, 0.2f, 2.2f),
+                     Color(135, 20, 35), spin);
+        }
+        else if (hazard.motion == HazardMotion::Vertical)
+        {
+            DrawCube(device, pass, hazard.position,
+                     Vector3(0.9f * pulse, 0.9f, 1.45f * pulse),
+                     Color(205, 45, 235), -spin * 0.35f);
+            DrawCube(device, pass, hazard.position, Vector3(0.3f, 0.18f, 3.0f),
+                     Color(100, 20, 140), -spin * 0.35f);
+            DrawCube(device, pass, hazard.position, Vector3(1.65f, 0.16f, 0.25f),
+                     Color(255, 105, 225), -spin * 0.35f);
+        }
+        else
+        {
+            DrawCube(device, pass, hazard.position,
+                     Vector3(1.2f * pulse, 1.2f, 1.2f * pulse),
+                     Color(255, 105, 25), spin + Pi / 4.0f);
+            DrawCube(device, pass, hazard.position, Vector3(2.55f, 0.18f, 0.28f),
+                     Color(255, 185, 35), spin);
+            DrawCube(device, pass, hazard.position, Vector3(0.28f, 0.18f, 2.55f),
+                     Color(170, 45, 20), spin);
+        }
         DrawCube(device, pass,
                  Vector3(hazard.position.X, hazard.position.Y + 0.62f,
                          hazard.position.Z),
@@ -649,28 +854,31 @@ namespace starfield
         const Color trimColor = active
                                     ? Color(145, 255, static_cast<int>(150.0f + pulse * 90.0f))
                                     : Color(35, 135, 85);
-        DrawCube(device, pass, Vector3(0.0f, 0.05f, -9.0f),
+        const float gateX = extractionPosition_.X;
+        const float gateZ = extractionPosition_.Z;
+        DrawCube(device, pass, Vector3(gateX, 0.05f, gateZ),
                  Vector3(3.7f, 0.1f, 1.3f), Color(12, 70, 58));
         for (const float side : {-1.45f, 1.45f})
         {
-            DrawCube(device, pass, Vector3(side, 1.05f, -9.0f),
+            DrawCube(device, pass, Vector3(gateX + side, 1.05f, gateZ),
                      Vector3(0.42f, 2.1f, 0.62f), Color(10, 58, 52));
-            DrawCube(device, pass, Vector3(side, 1.15f, -9.0f),
+            DrawCube(device, pass, Vector3(gateX + side, 1.15f, gateZ),
                      Vector3(0.2f, 1.65f, 0.7f), gateColor);
-            DrawCube(device, pass, Vector3(side, 2.18f, -9.0f),
+            DrawCube(device, pass, Vector3(gateX + side, 2.18f, gateZ),
                      Vector3(0.56f, 0.18f, 0.78f), trimColor);
         }
-        DrawCube(device, pass, Vector3(0.0f, 2.25f, -9.0f),
+        DrawCube(device, pass, Vector3(gateX, 2.25f, gateZ),
                  Vector3(3.3f, 0.35f, 0.62f), Color(10, 58, 52));
-        DrawCube(device, pass, Vector3(0.0f, 2.23f, -9.0f),
+        DrawCube(device, pass, Vector3(gateX, 2.23f, gateZ),
                  Vector3(2.72f, 0.16f, 0.72f), gateColor);
-        DrawCube(device, pass, Vector3(0.0f, 0.12f, -9.0f),
+        DrawCube(device, pass, Vector3(gateX, 0.12f, gateZ),
                  Vector3(2.25f, 0.08f, 0.7f), trimColor);
     }
 
     void StarfieldGame::DrawHud()
     {
         auto& device = getGraphicsDeviceProperty();
+        const SectorTheme theme = ThemeForSector(sectorIndex_);
         device.setDepthStencilStateProperty(xna::Graphics::DepthStencilState::None);
         effect_->View = Matrix::getIdentityProperty();
         effect_->Projection = Matrix::CreateOrthographicOffCenter(
@@ -682,7 +890,7 @@ namespace starfield
         DrawHudRect(device, pass, 22.0f, 18.0f, 435.0f, 88.0f,
                     Color(5, 12, 30, 225));
         DrawHudRect(device, pass, 22.0f, 18.0f, 435.0f, 3.0f,
-                    Color(0, 175, 225));
+                    theme.accent);
         DrawText(device, pass, "CELLS", 36.0f, 29.0f, 2.0f, Color(130, 205, 255));
         for (std::size_t index = 0; index < collectibles_.size(); ++index)
         {
@@ -711,7 +919,8 @@ namespace starfield
                                                              : Color(0, 200, 255);
         const std::string stateText = runState_ == RunState::Won ? "MISSION COMPLETE"
                                     : runState_ == RunState::Lost ? "MISSION FAILED"
-                                    : "COURIER ACTIVE";
+                                    : "SECTOR " + std::to_string(sectorIndex_ + 1) +
+                                          " " + SectorName(sectorIndex_);
         DrawHudRect(device, pass, 474.0f, 18.0f, 500.0f, 56.0f,
                     Color(5, 12, 30, 210));
         DrawHudRect(device, pass, 474.0f, 18.0f, 4.0f, 56.0f, stateColor);
@@ -720,7 +929,7 @@ namespace starfield
         DrawHudRect(device, pass, 996.0f, 18.0f, 262.0f, 88.0f,
                     Color(5, 12, 30, 225));
         DrawHudRect(device, pass, 996.0f, 18.0f, 262.0f, 3.0f,
-                    Color(0, 175, 225));
+                    theme.accent);
         DrawText(device, pass, "SCORE", 1011.0f, 29.0f, 2.0f,
                  Color(130, 205, 255));
 
@@ -737,6 +946,38 @@ namespace starfield
                     Color(5, 12, 30, 205));
         DrawText(device, pass, "WASD MOVE  R RESTART  ESC QUIT",
                  34.0f, 688.0f, 1.5f, Color(115, 165, 205));
+        const std::string sectorProgress = "SECTOR " +
+                                           std::to_string(sectorIndex_ + 1) + "/" +
+                                           std::to_string(SectorCount);
+        DrawHudRect(device, pass, 1035.0f, 682.0f, 223.0f, 25.0f,
+                    Color(5, 12, 30, 205));
+        DrawText(device, pass, sectorProgress, 1062.0f, 688.0f, 1.5f,
+                 theme.accent);
+
+        if (sectorBannerSeconds_ > 0.0f &&
+            runState_ != RunState::Won && runState_ != RunState::Lost)
+        {
+            const std::string sectorTitle = "SECTOR " +
+                                            std::to_string(sectorIndex_ + 1);
+            const std::string sectorName = SectorName(sectorIndex_);
+            const auto centeredX = [](std::size_t length, float pixelSize)
+            {
+                return (static_cast<float>(ReferenceWidth) -
+                        (static_cast<float>(length) * 6.0f - 1.0f) * pixelSize) * 0.5f;
+            };
+            DrawHudRect(device, pass, 350.0f, 122.0f, 580.0f, 122.0f,
+                        Color(3, 8, 24, 218));
+            DrawHudRect(device, pass, 350.0f, 122.0f, 580.0f, 4.0f,
+                        theme.accent);
+            DrawHudRect(device, pass, 350.0f, 240.0f, 580.0f, 4.0f,
+                        theme.accent);
+            DrawText(device, pass, sectorTitle,
+                     centeredX(sectorTitle.size(), 3.0f), 145.0f, 3.0f,
+                     Color(225, 240, 255));
+            DrawText(device, pass, sectorName,
+                     centeredX(sectorName.size(), 4.0f), 192.0f, 4.0f,
+                     theme.accent);
+        }
 
         if (runState_ == RunState::Won || runState_ == RunState::Lost)
         {
@@ -760,7 +1001,7 @@ namespace starfield
                                              ? "MISSION COMPLETE"
                                              : "MISSION FAILED";
             const std::string detail = runState_ == RunState::Won
-                                           ? "ALL ENERGY CELLS DELIVERED"
+                                           ? "ALL 3 SECTORS CLEARED"
                                            : "HAZARD IMPACT OR TIME LIMIT";
             DrawText(device, pass, headline, centeredX(headline.size(), 5.0f),
                      258.0f, 5.0f, terminalColor);
@@ -886,6 +1127,7 @@ namespace starfield
 
     void StarfieldGame::CaptureFrame()
     {
+        const SectorTheme theme = ThemeForSector(sectorIndex_);
         const int width = captureTarget_->getWidthProperty();
         const int height = captureTarget_->getHeightProperty();
         std::vector<Color> pixels(static_cast<std::size_t>(width) *
@@ -901,7 +1143,7 @@ namespace starfield
         std::size_t hazardPixels = 0;
         std::size_t gatePixels = 0;
         std::size_t hudPixels = 0;
-        const Color clear(4, 10, 30);
+        const Color clear = theme.sky;
         for (std::size_t pixelIndex = 0; pixelIndex < pixels.size(); ++pixelIndex)
         {
             const Color& pixel = pixels[pixelIndex];
@@ -909,9 +1151,9 @@ namespace starfield
             const int green = pixel.getGProperty();
             const int blue = pixel.getBProperty();
             nonClearPixels += pixel != clear;
-            floorPixels += pixel == Color(25, 45, 90);
-            gridPixels += pixel == Color(55, 90, 135);
-            boundaryPixels += pixel == Color(255, 120, 20);
+            floorPixels += pixel == theme.floor;
+            gridPixels += pixel == theme.grid;
+            boundaryPixels += pixel == theme.boundary;
             playerPixels += blue > 160 && green > 100 && red < 120;
             collectiblePixels += red > 210 && green > 135 && blue < 130;
             hazardPixels += red > 175 && green < 100 && blue < 110;
@@ -922,14 +1164,23 @@ namespace starfield
 
         frameValid_ = width == ReferenceWidth && height == ReferenceHeight &&
                       nonClearPixels > pixels.size() / 100 &&
-                      floorPixels > pixels.size() / 10 && gridPixels > 5000 &&
-                      boundaryPixels > 5000 && playerPixels > 500 &&
+                      floorPixels > pixels.size() / 10 && gridPixels > 2500 &&
+                      boundaryPixels > 3000 && playerPixels > 500 &&
                       collectiblePixels > 500 && hazardPixels > 500 &&
                       gatePixels > 300 && hudPixels > 5000;
         if (options_.validateFrame && !frameValid_)
         {
             throw std::runtime_error(
-                "captured game frame is incomplete, blank, or not 1280x720");
+                "captured sector " + std::to_string(sectorIndex_ + 1) +
+                " frame is incomplete: non-clear=" + std::to_string(nonClearPixels) +
+                " floor=" + std::to_string(floorPixels) +
+                " grid=" + std::to_string(gridPixels) +
+                " boundary=" + std::to_string(boundaryPixels) +
+                " player=" + std::to_string(playerPixels) +
+                " collectible=" + std::to_string(collectiblePixels) +
+                " hazard=" + std::to_string(hazardPixels) +
+                " gate=" + std::to_string(gatePixels) +
+                " hud=" + std::to_string(hudPixels));
         }
 
         if (options_.screenshotPath.empty())

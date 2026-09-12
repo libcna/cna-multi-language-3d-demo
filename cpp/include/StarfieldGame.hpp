@@ -38,6 +38,7 @@ namespace starfield
 {
     inline constexpr int ReferenceWidth = 1280;
     inline constexpr int ReferenceHeight = 720;
+    inline constexpr int SectorCount = 3;
 
     enum class RunState : std::uint8_t
     {
@@ -53,10 +54,22 @@ namespace starfield
         float heading = 0.0f;
     };
 
+    enum class HazardMotion : std::uint8_t
+    {
+        Horizontal,
+        Vertical,
+        Orbit
+    };
+
     struct Hazard
     {
         Microsoft::Xna::Framework::Vector3 position;
-        float velocityX = 0.0f;
+        Microsoft::Xna::Framework::Vector3 origin;
+        Microsoft::Xna::Framework::Vector3 velocity;
+        HazardMotion motion = HazardMotion::Horizontal;
+        float phase = 0.0f;
+        float range = 0.0f;
+        bool active = false;
     };
 
     struct Collectible
@@ -70,6 +83,7 @@ namespace starfield
         int smokeFrames = -1;
         std::string screenshotPath;
         std::string contentRoot;
+        int startSector = 0;
         bool validateFrame = false;
     };
 
@@ -83,13 +97,16 @@ namespace starfield
 
         [[nodiscard]] RunState runState() const noexcept;
         [[nodiscard]] const Player& player() const noexcept;
-        [[nodiscard]] const std::array<Hazard, 2>& hazards() const noexcept;
+        [[nodiscard]] const std::array<Hazard, 3>& hazards() const noexcept;
         [[nodiscard]] const std::array<Collectible, 3>& collectibles() const noexcept;
         [[nodiscard]] const Microsoft::Xna::Framework::Vector3& cameraPosition() const noexcept;
         [[nodiscard]] const Microsoft::Xna::Framework::Vector3& cameraTarget() const noexcept;
         [[nodiscard]] float elapsedSeconds() const noexcept;
         [[nodiscard]] int score() const noexcept;
         [[nodiscard]] int collectedCount() const noexcept;
+        [[nodiscard]] int sectorIndex() const noexcept;
+        [[nodiscard]] const Microsoft::Xna::Framework::Vector3&
+            extractionPosition() const noexcept;
         [[nodiscard]] bool frameValid() const noexcept;
 
     protected:
@@ -103,6 +120,7 @@ namespace starfield
         friend class StarfieldGameTestAccess;
 
         void ResetGameplay();
+        void LoadSector(int sectorIndex);
         void AdvanceGameplay(float seconds, float turn, float throttle, bool boost, bool restart);
         void UpdateCamera();
         void MoveHazard(Hazard& hazard, float seconds);
@@ -149,14 +167,17 @@ namespace starfield
         RuntimeOptions options_;
         RunState runState_ = RunState::Title;
         Player player_{};
-        std::array<Hazard, 2> hazards_{};
+        std::array<Hazard, 3> hazards_{};
         std::array<Collectible, 3> collectibles_{};
         Microsoft::Xna::Framework::Vector3 cameraPosition_;
         Microsoft::Xna::Framework::Vector3 cameraTarget_;
+        Microsoft::Xna::Framework::Vector3 extractionPosition_;
         float elapsedSeconds_ = 0.0f;
         int score_ = 0;
+        int sectorIndex_ = 0;
         int drawnFrames_ = 0;
         float presentationSeconds_ = 0.0f;
+        float sectorBannerSeconds_ = 0.0f;
         bool restartHeld_ = false;
         bool captured_ = false;
         bool frameValid_ = true;

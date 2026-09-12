@@ -11,25 +11,32 @@ reference.
 - Coordinate system: right-handed XNA coordinates, with `Y` up and the arena
   floor on the XZ plane.
 - Arena: a 20×20 square bounded by `X,Z = -10..10`.
-- Floor: dark blue `(25,45,90)` with blue grid lines `(55,90,135)` every two
-  world units.
-- Boundaries: orange rails `(255,120,20)` and lighter orange marker posts
-  `(255,180,50)` at the edges.
-- Clear color: deep navy `(4,10,30)`.
+- Each sector uses the following deterministic environment:
 
-All geometry may be procedural. No content-pipeline asset is required.
+| Sector | Sky | Floor | Grid | Boundary / accent | Landmarks |
+| --- | --- | --- | --- | --- | --- |
+| 1 — Starport | `(4,10,30)` | `(25,45,90)` | `(55,90,135)` | `(255,120,20)` / `(0,175,225)` | blue runway and orange edge beacons |
+| 2 — Ion Basin | `(13,5,27)` | `(55,30,85)` | `(130,65,150)` | `(30,220,220)` / `(205,80,255)` | diagonal ion traces and cyan/magenta crystal towers beyond the boundary |
+| 3 — Solar Forge | `(25,5,8)` | `(72,27,25)` | `(150,58,35)` | `(255,185,35)` / `(255,75,35)` | glowing floor channels and forge stacks beyond the boundary |
+
+World geometry is procedural and uses no renderer-specific asset path.
 
 ## Authoritative objects
 
-- Player: cyan courier craft at `(0,0.6,0)` after reset, heading `0` radians.
-  Heading zero faces world `-Z`. A lighter cyan nose makes rotation visible.
-- Collectibles: three gold energy cells at `(-6,0.7,0)`, `(0,0.7,-5)`, and
-  `(6,0.7,0)`.
-- Primary hazard: red prism at `(0,0.8,3)`, moving along X at `+2` units/second.
-- Secondary hazard: red prism at `(0,0.6,-3.5)`, moving along X at `-2`
-  units/second.
-- Each hazard reverses at `X=-7` and `X=7`.
-- Extraction gate: three green bars centered around `(0,0,-9)`. It uses dark
+- The player is a cyan courier craft. Heading zero faces world `-Z`; a lighter
+  cyan nose makes heading visible.
+- Every sector has three gold energy cells and at least two active hazards:
+
+| Sector | Player start | Cell positions | Hazards | Gate |
+| --- | --- | --- | --- | --- |
+| Starport | `(0,0.6,0)` | `(-6,0.7,0)`, `(0,0.7,-5)`, `(6,0.7,0)` | horizontal from `(0,0.8,3)` at `+2`; horizontal from `(0,0.6,-3.5)` at `-2`; both range `7` | `(0,0,-9)` |
+| Ion Basin | `(0,0.6,8)` | `(-7,0.7,6)`, `(7,0.7,-1)`, `(-5,0.7,-6)` | vertical around `(-2,0.8,0)` at `+2`, range `7`; horizontal around `(0,0.7,-2)` at `-2`, range `7`; orbit around `(2,0.9,2)`, radius `2.5` | `(8,0,-8)` |
+| Solar Forge | `(0,0.6,8)` | `(-7,0.7,-5)`, `(0,0.7,-6)`, `(6,0.7,6)` | horizontal around `(0,0.8,4)` at `+2.5`, range `8`; vertical around `(-4,0.7,0)` at `-2.4`, range `8`; orbit around `(3,1,-3)`, radius `3` | `(-8,0,-8)` |
+
+- Horizontal and vertical hazards reverse at `origin ± range`. Orbiters advance
+  phase by `1.35` radians/second and write their calculated XZ location back to
+  the authoritative hazard position before collision and drawing.
+- The extraction gate uses dark
   green `(20,100,50)` until all cells are collected and bright green
   `(40,255,80)` afterward.
 
@@ -48,8 +55,10 @@ movement, camera, and collision must read the same player position and heading.
   uses an orthographic 1280×720 projection.
 - Rendering uses an XNA-style `BasicEffect` with colored vertices. Game source
   is renderer-independent.
-- The HUD shows three collection indicators, remaining-time bar, colored
-  run-state indicator, and four seven-segment score digits.
+- The HUD shows three collection indicators, per-sector remaining time,
+  sector name/progress, colored run-state indicator, and four score digits.
+- A short non-blocking banner introduces each environment without hiding the
+  craft or pausing gameplay.
 - `Won` and `Lost` keep rendering a subtly animated presentation layer over
   the frozen gameplay state. A large terminal panel names the result and says
   `PRESS R OR ENTER TO RESTART`, so a completed run cannot resemble a hang.
@@ -58,8 +67,8 @@ movement, camera, and collision must read the same player position and heading.
 
 - Collecting a cell plays a short rising confirmation chime; successive cells
   rise slightly in pitch.
-- Hazard impact or timeout plays the loss cue, entering the gate after all
-  cells plays the victory cue, and restart plays a short button cue.
+- Hazard impact or timeout plays the loss cue, entering an unlocked gate plays
+  a sector-clear/final-victory cue, and restart plays a short button cue.
 - The four original PCM16 WAV cues contain no third-party recordings. Production
   code loads them in `LoadContent` using XNA `SoundEffect::FromStream` and plays
   them using XNA `SoundEffect::Play`.
@@ -93,20 +102,24 @@ movement, camera, and collision must read the same player position and heading.
   Each cell awards `100` points once.
 - A hazard collision occurs at XZ distance at most `1.75` and immediately
   enters `Lost`.
-- Reaching 60 elapsed seconds enters `Lost`.
-- After all three cells are collected, reaching `(0,0,-9)` within XZ radius
-  `1.4` enters `Won` and awards `1000` additional points.
+- Every sector has its own 60-second timer; reaching 60 seconds enters `Lost`.
+- After all three local cells are collected, reaching that sector's gate within
+  XZ radius `1.4` advances immediately. Clearing sectors one and two awards
+  `500` points each, preserves score, and loads the next layout with a fresh
+  timer and three uncollected cells. Clearing sector three awards `1000` and
+  enters `Won`. A perfect campaign score is `2900`.
 - Gameplay fields stop changing in `Won` and `Lost`, except that restart is
   always accepted. Presentation-only pulsing continues behind the terminal
   panel to make the responsive game loop visible.
-- Restart resets player position and heading, both hazards and velocities,
-  collectibles, elapsed time, score, camera, and run state.
+- Restart resets the entire campaign to Starport: player, heading, all hazard
+  positions/motion, collectibles, sector timer, score, camera, and run state.
 
 ## Verification
 
 Behavior tests must exercise the state owned by the actual XNA game class and
-assert final values for movement, camera, collection, hazard collision,
-timeout, win, terminal-state freezing, and restart. Graphical tests must enter
+assert final values for movement, camera, collection, all three hazard motion
+types, sector transitions and score preservation, timeout, final win,
+terminal-state freezing, and restart. Graphical tests must enter
 ordinary `Game::Run()`, render the real scene, and verify a nonblank 1280×720
-frame containing the required world and HUD colors. Renderer parity compares
-frames captured from those real game runs.
+frame containing the required world and HUD colors for every sector. Renderer
+parity compares frames captured from those real game runs.

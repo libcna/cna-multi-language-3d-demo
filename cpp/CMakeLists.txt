@@ -37,7 +37,21 @@ set_tests_properties(
         ENVIRONMENT
             "SDL_VIDEODRIVER=offscreen;SDL_AUDIODRIVER=dummy;CNA_GRAPHICS_RENDERER=OPENGL33"
         PASS_REGULAR_EXPRESSION
-            "starfield-cpp state=playing collected=0 score=0 frame_valid=true")
+            "starfield-cpp state=playing collected=0 score=0 sector=1 frame_valid=true")
+
+foreach(sector IN ITEMS 2 3)
+    add_test(
+        NAME cpp_graphics_opengl33_sector${sector}
+        COMMAND starfield_cpp --smoke-frames 1 --validate-frame --start-sector ${sector})
+    set_tests_properties(
+        cpp_graphics_opengl33_sector${sector}
+        PROPERTIES
+            LABELS "cpp;cna;graphics;opengl33;sectors"
+            ENVIRONMENT
+                "SDL_VIDEODRIVER=offscreen;SDL_AUDIODRIVER=dummy;CNA_GRAPHICS_RENDERER=OPENGL33"
+            PASS_REGULAR_EXPRESSION
+                "starfield-cpp state=playing collected=0 score=0 sector=${sector} frame_valid=true")
+endforeach()
 
 if("OPENGLES3" IN_LIST CNA_GRAPHICS_RENDERERS OR
    CNA_GRAPHICS_RENDERER STREQUAL "OPENGLES3")
@@ -51,5 +65,19 @@ if("OPENGLES3" IN_LIST CNA_GRAPHICS_RENDERERS OR
             ENVIRONMENT
                 "SDL_VIDEODRIVER=offscreen;SDL_AUDIODRIVER=dummy;CNA_GRAPHICS_RENDERER=OPENGLES3"
             PASS_REGULAR_EXPRESSION
-                "starfield-cpp state=playing collected=0 score=0 frame_valid=true")
+                "starfield-cpp state=playing collected=0 score=0 sector=1 frame_valid=true")
+
+    foreach(sector IN ITEMS 2 3)
+        add_test(
+            NAME cpp_graphics_opengles3_sector${sector}
+            COMMAND starfield_cpp --smoke-frames 1 --validate-frame --start-sector ${sector})
+        set_tests_properties(
+            cpp_graphics_opengles3_sector${sector}
+            PROPERTIES
+                LABELS "cpp;cna;graphics;opengles3;sectors"
+                ENVIRONMENT
+                    "SDL_VIDEODRIVER=offscreen;SDL_AUDIODRIVER=dummy;CNA_GRAPHICS_RENDERER=OPENGLES3"
+                PASS_REGULAR_EXPRESSION
+                    "starfield-cpp state=playing collected=0 score=0 sector=${sector} frame_valid=true")
+    endforeach()
 endif()

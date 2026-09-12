@@ -26,6 +26,12 @@ namespace starfield
             game.player_.position.Z = z;
             game.UpdateCamera();
         }
+
+        static void LoadSector(StarfieldGame& game, int sectorIndex)
+        {
+            game.LoadSector(sectorIndex);
+            game.runState_ = RunState::Playing;
+        }
     };
 }
 
@@ -85,6 +91,23 @@ namespace
         HoldFrames(game, 30, -1.0f, 0.0f);  // face north
         HoldFrames(game, 54, 0.0f, 1.0f);   // enter extraction gate
     }
+
+    void CollectCurrentSectorAtCheckpoints(starfield::StarfieldGame& game)
+    {
+        const auto collectibles = game.collectibles();
+        for (const auto& collectible : collectibles)
+        {
+            starfield::StarfieldGameTestAccess::PutPlayerAt(
+                game, collectible.position.X, collectible.position.Z);
+            starfield::StarfieldGameTestAccess::Advance(
+                game, 0.0f, 0.0f, 0.0f, false);
+        }
+
+        const auto gate = game.extractionPosition();
+        starfield::StarfieldGameTestAccess::PutPlayerAt(game, gate.X, gate.Z);
+        starfield::StarfieldGameTestAccess::Advance(
+            game, 0.0f, 0.0f, 0.0f, false);
+    }
 }
 
 int main()
@@ -100,7 +123,9 @@ int main()
                          game.collectedCount() == 0 && game.score() == 0 &&
                          Near(game.player().position.X, 0.0f) &&
                          Near(game.player().position.Z, 0.0f) &&
-                         Near(game.player().heading, 0.0f),
+                         Near(game.player().heading, 0.0f) &&
+                         game.sectorIndex() == 0 &&
+                         !game.hazards()[2].active,
                      "initial state must be a complete reset state");
 
     Step(game, 1.0f, 0.0f, false);
@@ -136,12 +161,12 @@ int main()
 
     starfield::StarfieldGameTestAccess::Reset(game);
     CollectAllAndExtractAtSixtyHz(game);
-    const float gateDistance = std::hypot(
-        game.player().position.X, game.player().position.Z + 9.0f);
-    if (game.runState() != starfield::RunState::Won || game.collectedCount() != 3 ||
-        game.score() != 1300 || gateDistance > 1.4f)
+    if (game.runState() != starfield::RunState::Playing ||
+        game.sectorIndex() != 1 || game.collectedCount() != 0 ||
+        game.score() != 800)
     {
         std::cerr << "route diagnostic: state=" << static_cast<int>(game.runState())
+                  << " sector=" << game.sectorIndex()
                   << " collected=" << game.collectedCount()
                   << " score=" << game.score()
                   << " x=" << game.player().position.X
@@ -150,17 +175,52 @@ int main()
                   << " hazard0=" << game.hazards()[0].position.X
                   << " hazard1=" << game.hazards()[1].position.X << '\n';
     }
+    passed &= Expect(game.runState() == starfield::RunState::Playing &&
+                         game.sectorIndex() == 1 && game.collectedCount() == 0 &&
+                         game.score() == 800,
+                     "a continuous 60 Hz route must clear sector one and advance");
+
+    const auto ionHorizontalBefore = game.hazards()[1].position;
+    const auto ionVerticalBefore = game.hazards()[0].position;
+    const auto ionOrbiterBefore = game.hazards()[2].position;
+    Step(game, 0.0f, 0.0f, false);
+    passed &= Expect(game.hazards()[0].motion == starfield::HazardMotion::Vertical &&
+                         game.hazards()[0].position.Z > ionVerticalBefore.Z &&
+                         game.hazards()[1].motion == starfield::HazardMotion::Horizontal &&
+                         game.hazards()[1].position.X < ionHorizontalBefore.X &&
+                         game.hazards()[2].motion == starfield::HazardMotion::Orbit &&
+                         !Near(game.hazards()[2].position.Z, ionOrbiterBefore.Z),
+                     "ion basin hazards must use vertical, horizontal, and orbital motion");
+
+    starfield::StarfieldGameTestAccess::LoadSector(game, 1);
+    CollectCurrentSectorAtCheckpoints(game);
+    passed &= Expect(game.runState() == starfield::RunState::Playing &&
+                         game.sectorIndex() == 2 && game.collectedCount() == 0 &&
+                         game.score() == 1600,
+                     "clearing sector two must preserve score and load sector three");
+
+    const auto forgeHorizontalBefore = game.hazards()[0].position;
+    const auto forgeVerticalBefore = game.hazards()[1].position;
+    const auto forgeOrbiterBefore = game.hazards()[2].position;
+    Step(game, 0.0f, 0.0f, false);
+    passed &= Expect(game.hazards()[0].position.X > forgeHorizontalBefore.X &&
+                         game.hazards()[1].position.Z < forgeVerticalBefore.Z &&
+                         !Near(game.hazards()[2].position.Z, forgeOrbiterBefore.Z),
+                     "solar forge enemies must advance from their authoritative positions");
+
+    starfield::StarfieldGameTestAccess::LoadSector(game, 2);
+    CollectCurrentSectorAtCheckpoints(game);
     passed &= Expect(game.runState() == starfield::RunState::Won &&
-                         game.collectedCount() == 3 && game.score() == 1300 &&
-                         gateDistance <= 1.4f,
-                     "a continuous 60 Hz route must collect every cell and win");
+                         game.sectorIndex() == 2 && game.collectedCount() == 3 &&
+                         game.score() == 2900,
+                     "clearing all three sectors must enter the final win state");
 
     const auto wonPosition = game.player().position;
     const float wonTime = game.elapsedSeconds();
     Step(game, 1.0f, 1.0f);
     passed &= Expect(Near(game.player().position.X, wonPosition.X) &&
                          Near(game.player().position.Z, wonPosition.Z) &&
-                         Near(game.elapsedSeconds(), wonTime) && game.score() == 1300,
+                         Near(game.elapsedSeconds(), wonTime) && game.score() == 2900,
                      "terminal states must freeze gameplay");
 
     starfield::StarfieldGameTestAccess::Reset(game);
@@ -184,6 +244,7 @@ int main()
                          Near(game.player().heading, 0.0f) &&
                          Near(game.hazards()[0].position.X, 0.0f) &&
                          Near(game.hazards()[1].position.X, 0.0f) &&
+                         !game.hazards()[2].active && game.sectorIndex() == 0 &&
                          Near(game.elapsedSeconds(), 0.0f),
                      "restart must reset every authoritative gameplay field");
 
