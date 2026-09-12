@@ -1,59 +1,85 @@
-# CNA Starfield Courier: headless contract
+# CNA Starfield Courier — Game Architecture Contract
 
-This file is the small, renderer-independent contract shared by every port.
-The graphical shell is intentionally not part of the conformance protocol.
+This contract defines what counts as an implementation of the shared game.
+It deliberately does not define a headless serialization or stdout protocol.
 
-## Coordinate system and state
+## Canonical architecture
 
-The simulation uses a right-handed XNA-style world. `x` is horizontal, `y` is
-up (always zero in the headless rules), and `z` is depth. The courier starts at
-`(0, 0, 0)` in `Title`. The arena is the square `[-10, 10] x [-10, 10]` in
-the X/Z plane. The extraction ring is at `(0, -9)`.
+Every port must be a CNA/XNA application in its target language. For C++, the
+authoritative type is:
 
-The states are `Title = 0`, `Playing = 1`, `Won = 2`, and `Lost = 3`. The
-first update without `restart` changes `Title` to `Playing`. `restart` resets
-all values to the initial `Title` snapshot and takes precedence over other
-input.
-
-## Input and update
-
-An input frame contains `turn` and `forward` in `[-1, 1]`, and boolean `boost`
-and `restart` values. Values outside the range are clamped. Turn changes the
-player heading at 180 degrees/second; heading zero faces world `-Z`. Forward
-movement follows that heading at `4` units/second, or `7` units/second while
-boosting. An update clamps seconds to `0..0.25` and movement to the arena. The
-simulation is frame-rate independent; callers that need a fixed step should
-submit repeated `1/60` updates.
-
-## Objects and scoring
-
-Energy cells have centers `(-6, 0)`, `(0, -5)`, and `(6, 0)` and a collection
-radius of `0.9`. The primary moving hazard has radius `1.0`, starts at `(0, 3)`,
-and travels on the X axis between `-7` and `7` at `2` units/second. The second
-hazard follows the opposite X phase at `Z=-3.5`. A courier collision radius is
-`0.75`; touching either hazard (distance at most `1.75`) changes the state to
-`Lost`. The time limit is `60` seconds and also causes `Lost`.
-
-After all three cells are collected, entering the extraction ring (distance at
-most `1.4`) changes the state to `Won`. A cell is worth `100` points and a win
-adds `1000` points. The score and elapsed time stop changing in terminal
-states. A loss never awards the win bonus.
-
-## Snapshot and scenarios
-
-Each snapshot is serialized as:
-
-```text
-state mask x z elapsed score heading hazard_x secondary_hazard_x
+```cpp
+class StarfieldGame final : public Microsoft::Xna::Framework::Game
 ```
 
-with state as the integer above and decimal floats. The legacy six-field
-prefix remains stable while graphical ports are being brought up. Required
-scenario names are `startup`, `collection`, `hazard`, `win`, `loss`, and
-`restart`. Ports may provide a native runner, but the result must contain the
-same fields and values within `1e-4` for floating-point values.
+The equivalent type in a future binding must participate in that binding's
+real CNA/XNA lifecycle. The required flow is:
 
-The renderer may use XNA 4.0 concepts (`GameTime`, `Vector3`, `Matrix`,
-`Model`, effects, vertex/index buffers, textures, `SpriteBatch`, and input
-services). EasyGL is the reference Linux backend and OpenGLES is an optional
-equivalent backend. No game-facing source may depend on `CNA.Ext`.
+```text
+Game::Run()
+  Initialize() / LoadContent()
+  Update(GameTime) -> CNA keyboard -> live gameplay state
+  Draw(GameTime)   -> that same live gameplay state
+```
+
+The game class may own small domain types such as `Player`, `Hazard`, and
+`Collectible`, and may delegate focused calculations to ordinary helpers. It
+must remain the lifecycle and ownership boundary. These are not acceptable:
+
+- an independent generic game engine under the CNA game;
+- a separately runnable authoritative headless simulator;
+- custom input or snapshot transport between a simulator and CNA;
+- a custom renderer abstraction used instead of XNA graphics APIs;
+- precomputed visual positions that differ from collision positions.
+
+## Lifecycle ownership
+
+- Construction configures the XNA `GraphicsDeviceManager`, 1280×720 back
+  buffer, fixed timestep, and window.
+- `Initialize` establishes the initial run state and camera.
+- `LoadContent` creates graphics/content resources through XNA-style APIs.
+- `Update(GameTime)` calls `Keyboard::GetState`, handles quit/restart, advances
+  player movement and heading, hazards, collectibles, collision, score, timer,
+  win/loss, and camera.
+- `Draw(GameTime)` applies the perspective camera, depth state, effect, world
+  matrices, and HUD projection to render the fields owned by that game.
+- The executable enters ordinary `Game::Run()`. Finite graphical tests may
+  request exit after a number of real drawn frames, but may not replace the
+  lifecycle with a simulator loop.
+
+## Shared state and behavior
+
+The exact constants, positions, colors, camera, controls, update order,
+collision radii, scoring, and terminal rules are normative in
+[`game-spec.md`](game-spec.md). Later ports may express their domain data
+differently, but their visible state transitions must match those rules.
+
+There is no canonical serialized `Snapshot`, scenario name set, stable stdout
+field list, or six-field compatibility prefix. Test diagnostics are local to a
+port and are not the game architecture.
+
+## API boundary
+
+Game-facing production code is limited to the XNA 4.0-style surface exposed by
+CNA or an official CNA binding. Suitable concepts include `Game`, `GameTime`,
+`GraphicsDeviceManager`, `Keyboard`, `Keys`, `Vector3`, `Matrix`,
+`GraphicsDevice`, `BasicEffect`, XNA vertex types, depth/rasterizer states,
+render targets, and sprite/content APIs.
+
+The game must not include or call CNAEXT, SDL, OpenGL, OpenGL ES, EGL, Vulkan,
+DirectX, EasyGL, or other renderer internals. Renderer selection belongs to CNA
+build/runtime configuration. The unchanged game must run with EasyGL/OpenGL33
+and EasyGL/OpenGLES3.
+
+## Testing contract
+
+Tests must fail when gameplay results are wrong, not only when a process exits
+nonzero. Unit access may call the same private gameplay step owned and used by
+the real game class; it must not reproduce that step in a test-only engine.
+At least one integration test must run the actual graphical executable through
+`Game::Run()` and inspect a real rendered frame. Screenshot comparisons must
+use pixels read from the actual game render, never generated reference data.
+
+A port is complete only after its real window, input, simulation, rendering,
+terminal states, restart, and required renderer configurations have been
+validated. Numeric agreement without a CNA game is insufficient.

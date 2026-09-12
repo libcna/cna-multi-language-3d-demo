@@ -13,11 +13,11 @@ repository foundation.
 
 ## Task ledger
 
-1. **Repository repair — WIP**
+1. **Repository repair — DONE for C++ milestone**
    - Keep `main` at the clean foundation commit and move implementation work to `develop`.
    - Ignore IDE files, build trees, binaries, compiler intermediates, caches, and language outputs.
    - Make coherent milestone commits; never commit generated output.
-2. **Actual CNA API investigation — WIP**
+2. **Actual CNA API investigation — DONE**
    - Read the real public Game, GraphicsDevice, math, input, vertex/index, effect, and lifecycle declarations.
    - Confirm EasyGL and OpenGLES selection/build procedures from CNA sources and examples.
    - Prohibit CNAEXT, direct OpenGL calls, and invented APIs in game-facing code.
@@ -29,15 +29,15 @@ repository foundation.
    - Define a third-person perspective camera, FOV, clipping planes, depth, lighting, and reference presentation.
    - Define optional scripted startup/frame capture mode without replacing interactive play.
 5. **C++ graphical reference implementation — DONE**
-   - Uses the actual CNA `Game`, keyboard input, `BasicEffect`, procedural 3D geometry, heading-relative movement, a heading-relative chase camera, depth, HUD/state indicators, and complete gameplay.
-   - Simulation and rendering consume the same snapshot positions for both hazards.
-   - Game-facing rendering remains public XNA 4.0 style and renderer-independent.
+   - Replace the rejected frontend/core split with one authoritative `StarfieldGame : Microsoft::Xna::Framework::Game`.
+   - Put reset, keyboard input, simulation, collision, score, terminal state, camera, and drawing in that class's real XNA lifecycle.
+   - Render the live player, collectible, and hazard fields directly; do not introduce a snapshot transport or a second executable.
 6. **EasyGL validation — DONE**
-   - Built and ran the `OPENGL33` EasyGL implementation with a real 1280x720 X11 window and with SDL’s offscreen video driver.
-   - Assertion-backed CNA runtime tests exercise collect, hazard loss, win, and restart; a deterministic 1280x720 frame with required scene/HUD colors was captured and visually inspected.
+   - Built and ran the `OPENGL33` EasyGL implementation with a real 1280x720 X11 client window and with SDL's offscreen video driver.
+   - Real keyboard events verified turn, heading-relative movement, collection, loss, win, restart, and Escape; the captured scene and heading-following camera were visually inspected.
 7. **OpenGLES validation — DONE**
-   - Ran the unchanged C++ game with the `OPENGLES3` EasyGL profile and validated collect, hazard loss, win, restart, and captured frames.
-   - The deterministic startup captures from `OPENGL33` and `OPENGLES3` were pixel-identical in the 2026-09-12 validation pass.
+   - Ran the unchanged C++ game with the `OPENGLES3` EasyGL profile in real-window and offscreen configurations.
+   - The final deterministic `OPENGL33` and `OPENGLES3` captures were byte-identical.
 8. **Pure C graphical CNA implementation — TODO**
    - Use only the real public CNA C ABI; prove window/loop/input/3D rendering or document the exact ABI blocker.
 9. **C# graphical implementation — TODO**
@@ -59,24 +59,49 @@ repository foundation.
 17. **Common Lisp graphical implementation — TODO**
     - Use the actual CNA Lisp FFI path and validate interactive rendering.
 18. **Visual/behavior parity testing — WIP**
-    - Compare deterministic screenshots/frames and gameplay checkpoints against the C++ reference.
-    - Require perspective, depth, object placement, colors, motion, collisions, and controls to match closely.
-    - C++ now provides the baseline `--scenario`, `--validate-frame`, and `--screenshot` modes; cross-language comparisons remain pending.
+   - Compare deterministic screenshots/frames and gameplay checkpoints against the C++ reference.
+   - Require perspective, depth, object placement, colors, motion, collisions, and controls to match closely.
+   - The rebuilt C++ application retains only finite graphical smoke/capture support that still enters `Game::Run()`; the old headless scenario protocol is removed.
 19. **Build documentation — WIP**
     - Document verified prerequisites and exact build/run commands per language and renderer.
     - Keep README status limited to evidence-backed `graphical / verified`, `blocked`, or `not started`.
-20. **Final cleanup and verification — TODO**
-    - Remove generated artifacts, verify ignore rules and clean worktree, audit for CNAEXT/direct renderer calls, and run the relevant tests.
+20. **Final cleanup and verification — DONE for C++ milestone**
+    - Generated artifacts remain ignored, source audits are clean, both renderers are runtime-verified, and all C++ tests pass.
 
 ## Required implementation order
 
 C++ → C → C# → Java → TypeScript → Python → Rust → Go → Swift → Ruby →
 Common Lisp. Do not generate placeholder ports ahead of the active milestone.
 
-## C++ verification evidence (2026-09-12)
+## C++ architecture audit (2026-09-12, before repair)
 
-- `cpp_gameplay` contains assertions for heading-relative motion, authoritative hazard snapshots, all three cells, hazard and timeout loss, win, terminal-state freezing, and complete restart.
-- CNA graphical tests require both a non-blank 1280x720 render target and the expected serialized game result; a zero exit status alone is insufficient.
-- EasyGL `OPENGL33` and `OPENGLES3` initialized successfully using the same `cpp/src/cna_game.cpp` source. No CNAEXT or renderer-specific API is used by that game source.
-- A 1280x720 X11 run received real Right/W/R/Escape events: turn and movement changed the snapshot, `R` reset position and heading, and Escape left the CNA loop.
-- C and every later language remain out of scope until this C++ milestone is accepted.
+- Starting commit: `f8aff38` (`cpp: complete and validate graphical reference`); the worktree was clean.
+- The apparent CNA game in `cpp/src/cna_game.cpp` is only a shell. It owns a separate `starfield::Game simulation_`, converts `Keyboard::GetState()` into a custom `starfield::Input`, advances the independent simulation, copies a `starfield::Snapshot`, and draws that copy.
+- `cpp/include/starfield.hpp` declares the competing generic `starfield::Game`, custom `Input`, custom `Snapshot`, generic `Renderer`, and `run_scenario()`. `cpp/src/starfield.cpp` contains the authoritative rules, while `cpp/src/main.cpp` exposes them as the default headless `starfield_cpp` executable.
+- `cpp/CMakeLists.txt` makes `starfield_core` and the headless executable unconditional, but makes the actual CNA application an optional `starfield_cna` target. This states the inverse of the required architecture.
+- `shared/game-contract.md` explicitly calls the graphical shell non-authoritative and defines serialized headless snapshots as the conformance protocol. That contract must be rewritten around the real graphical game.
+- The existing tests validate the substitute `starfield::Game`; they do not instantiate or test the state owned by the XNA game class. The graphical scenario tests merely ask the wrapper to render snapshots precomputed by `run_scenario()`.
+- The CNA checkout inspected at sibling commit `1b3151f2f` confirms the exact lifecycle and inheritance model: `Microsoft::Xna::Framework::Game` exposes virtual `Initialize`, `LoadContent`, `Update(GameTime&)`, and `Draw(const GameTime&)`, and `Game::Run()` performs device creation, lifecycle initialization, event polling, timed updates, drawing, and presentation.
+- CNA's headers mark extensions with `CNAEXT`. The APIs required here are on the non-extension XNA-compatible surface: `GraphicsDeviceManager`, `Keyboard::GetState`, `Keys`, `BasicEffect`, `Matrix`, `Vector3`, `DepthStencilState`, `RasterizerState`, `RenderTarget2D`, and typed `GraphicsDevice::DrawUserPrimitives`.
+- `Game::RunOneFrame()` is declared on CNA's non-`CNAEXT` compatibility surface and is used by CNA's lifecycle tests, but it is a finite-frame harness method rather than the correct normal application entry. The rebuilt application will not call it: playable and automated graphical runs will both enter ordinary `Game::Run()` and exit from the game lifecycle.
+- Renderer choice is a CNA build/runtime configuration concern. A CNA multi-renderer build accepts `CNA_GRAPHICS_RENDERERS="OPENGL33;OPENGLES3"`, with `CNA_GRAPHICS_RENDERER` selecting the default or environment-selected compiled renderer. The game source must not inspect that selection.
+
+## C++ repair boundary
+
+- Delete the custom framework files and replace them with a directly owned XNA game implementation and narrowly named domain data (`Player`, `Hazard`, `Collectible`, and run state).
+- Build `starfield_cpp` as the sole C++ application and require/link CNA for the C++ project by default. A small library target may package the actual `StarfieldGame` class for its executable and tests; it must not be independently runnable or become a second simulation.
+- Tests may use a friend test-access class to invoke the exact private gameplay step owned by `StarfieldGame`. They must not duplicate the rules, create a second game, or serialize snapshots. A graphical smoke test must run the application through `Game::Run()` and validate the real rendered frame.
+- C and every later language remain out of scope until this corrected C++ milestone is complete.
+
+## C++ verification evidence after repair (2026-09-12)
+
+- `cpp/include/StarfieldGame.hpp` declares the only game class, and compile-time tests prove it is `final` and derives from `Microsoft::Xna::Framework::Game`.
+- `cpp/src/StarfieldGame.cpp` owns reset, resource creation, CNA keyboard reads, simulation, player movement/heading, chase camera, two hazard objects, collectibles, collision, timer, score, win/loss/restart, world rendering, and HUD rendering. `Draw` reads the same object fields collision uses; there is no snapshot copy.
+- The default CMake project requires the sibling CNA source and builds `starfield_cpp` as the CNA application. The old `starfield_core`, headless `starfield_cpp`, optional `starfield_cna`, scenarios, custom `Game`, `Input`, `Snapshot`, and `Renderer` are gone.
+- `cpp_gameplay` tests the actual `StarfieldGame` fields and private gameplay step. It passed initial state, turning, heading-relative movement, heading-following camera, both authoritative hazard positions, collision at a drawn hazard position, a safe continuous 60 Hz route collecting all cells and winning, terminal freeze, 60 Hz timeout, and full restart.
+- `cpp_graphics_opengl33` and `cpp_graphics_opengles3` both enter ordinary `Game::Run()`, render through CNA, validate a nonblank 1280x720 frame containing floor/grid/boundary/player/collectible/hazard/HUD colors, and assert meaningful final state output. Final CTest result: 3/3 passed.
+- OpenGL33 initialized as EasyGL/OpenGL 4.5 offscreen and OpenGL 4.6 in the X11 window. The 1280x720 capture was visually inspected. Real `D` then `W` input produced heading `1.30899`, position `(1.60987,-0.431371)`, and a correspondingly rotated chase view; `R` restored position and heading to zero; Escape left `Game::Run()`.
+- OpenGLES3 initialized as EasyGL/OpenGL ES 3.2 both offscreen and in an X11 run. Its validated capture was byte-identical to OpenGL33: SHA-256 `c688f8586ee6e2b3b1868027984d87c3f1654a44e209661c775ab65875783a31`.
+- The final production-source audit found no `CNAEXT`/`cnaext`, `RunOneFrame`, CNA-specific namespace call, direct GL/GLES/EGL/SDL/Vulkan/DirectX include or call, renderer branch, custom generic `Game`, custom `Renderer`, custom `Input`, custom `Snapshot`, `run_scenario`, `starfield_core`, or `starfield_cna`.
+- No CNA defect or missing capability was encountered. No CNA-specific API remains in production game code; the finite capture option also exits from `Draw` while the executable remains inside normal `Game::Run()`.
+- C and all later language implementations remain `TODO` and were not modified.
