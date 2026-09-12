@@ -966,7 +966,7 @@ namespace starfield
                         (static_cast<float>(length) * 6.0f - 1.0f) * pixelSize) * 0.5f;
             };
             DrawHudRect(device, pass, 350.0f, 122.0f, 580.0f, 122.0f,
-                        Color(3, 8, 24, 218));
+                        Color(3, 8, 24, 145));
             DrawHudRect(device, pass, 350.0f, 122.0f, 580.0f, 4.0f,
                         theme.accent);
             DrawHudRect(device, pass, 350.0f, 240.0f, 580.0f, 4.0f,
