@@ -46,6 +46,8 @@ renderer branch in the game source.
 
 ## Game
 
+![CNA Starfield Courier running the Ion Basin sector](docs/images/starfield-courier.png)
+
 **CNA Starfield Courier** is now a compact three-sector campaign. In each
 bounded 20×20 arena, collect three gold energy cells, avoid moving hazards,
 and enter the green extraction gate before that sector's 60-second timer
