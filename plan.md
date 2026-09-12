@@ -32,6 +32,8 @@ repository foundation.
    - Replace the rejected frontend/core split with one authoritative `StarfieldGame : Microsoft::Xna::Framework::Game`.
    - Put reset, keyboard input, simulation, collision, score, terminal state, camera, and drawing in that class's real XNA lifecycle.
    - Render the live player, collectible, and hazard fields directly; do not introduce a snapshot transport or a second executable.
+   - **Audio feedback — DONE:** four original PCM16 WAV cues load through XNA `SoundEffect::FromStream`; collection, loss, win, and restart use XNA `SoundEffect::Play` without CNAEXT.
+   - **Background music — DONE:** the CC0/Public Domain `Outer Space Loop` is documented with source and checksum, and loops quietly through XNA `Song`/`MediaPlayer` without CNAEXT.
 6. **EasyGL validation — DONE**
    - Built and ran the `OPENGL33` EasyGL implementation with a real 1280x720 X11 client window and with SDL's offscreen video driver.
    - Real keyboard events verified turn, heading-relative movement, collection, loss, win, restart, and Escape; the captured scene and heading-following camera were visually inspected.
@@ -101,7 +103,10 @@ Common Lisp. Do not generate placeholder ports ahead of the active milestone.
 - `cpp_gameplay` tests the actual `StarfieldGame` fields and private gameplay step. It passed initial state, turning, heading-relative movement, heading-following camera, both authoritative hazard positions, collision at a drawn hazard position, a safe continuous 60 Hz route collecting all cells and winning, terminal freeze, 60 Hz timeout, and full restart.
 - `cpp_graphics_opengl33` and `cpp_graphics_opengles3` both enter ordinary `Game::Run()`, render through CNA, validate a nonblank 1280x720 frame containing floor/grid/boundary/player/collectible/hazard/HUD colors, and assert meaningful final state output. Final CTest result: 3/3 passed.
 - OpenGL33 initialized as EasyGL/OpenGL 4.5 offscreen and OpenGL 4.6 in the X11 window. The 1280x720 capture was visually inspected. Real `D` then `W` input produced heading `1.30899`, position `(1.60987,-0.431371)`, and a correspondingly rotated chase view; `R` restored position and heading to zero; Escape left `Game::Run()`.
-- OpenGLES3 initialized as EasyGL/OpenGL ES 3.2 both offscreen and in an X11 run. Its validated capture was byte-identical to OpenGL33: SHA-256 `c688f8586ee6e2b3b1868027984d87c3f1654a44e209661c775ab65875783a31`.
+- OpenGLES3 initialized as EasyGL/OpenGL ES 3.2 both offscreen and in an X11 run. After the visual redesign, its validated capture remained byte-identical to OpenGL33: SHA-256 `115d82b3c31a52992bddd12ee944783505dd353a03ff4d3e5241fa949a0c4e32`.
 - The final production-source audit found no `CNAEXT`/`cnaext`, `RunOneFrame`, CNA-specific namespace call, direct GL/GLES/EGL/SDL/Vulkan/DirectX include or call, renderer branch, custom generic `Game`, custom `Renderer`, custom `Input`, custom `Snapshot`, `run_scenario`, `starfield_core`, or `starfield_cna`.
 - No CNA defect or missing capability was encountered. No CNA-specific API remains in production game code; the finite capture option also exits from `Draw` while the executable remains inside normal `Game::Run()`.
+- A post-milestone playtest exposed poor terminal feedback: `Won` correctly froze gameplay but looked like a hang. The live game now retains presentation animation and displays an explicit, prominent win/loss panel with restart instructions. The procedural scene and HUD were also rebuilt with shaded composite objects and readable text.
+- The initially evaluated NOX recordings were rejected after playtesting and removed. Four clean, original synthesized cues now cover collection, loss, win, and restart through standard XNA `SoundEffect` APIs.
+- Quiet background music uses the unmodified CC0/Public Domain `Outer Space Loop` by wipics. Standard XNA `Song::FromUri` and `MediaPlayer` load, play, and repeat it; its source, license, and checksum are recorded beside the asset.
 - C and all later language implementations remain `TODO` and were not modified.

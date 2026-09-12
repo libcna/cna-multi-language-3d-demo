@@ -50,6 +50,23 @@ movement, camera, and collision must read the same player position and heading.
   is renderer-independent.
 - The HUD shows three collection indicators, remaining-time bar, colored
   run-state indicator, and four seven-segment score digits.
+- `Won` and `Lost` keep rendering a subtly animated presentation layer over
+  the frozen gameplay state. A large terminal panel names the result and says
+  `PRESS R OR ENTER TO RESTART`, so a completed run cannot resemble a hang.
+
+## Audio
+
+- Collecting a cell plays a short rising confirmation chime; successive cells
+  rise slightly in pitch.
+- Hazard impact or timeout plays the loss cue, entering the gate after all
+  cells plays the victory cue, and restart plays a short button cue.
+- The four original PCM16 WAV cues contain no third-party recordings. Production
+  code loads them in `LoadContent` using XNA `SoundEffect::FromStream` and plays
+  them using XNA `SoundEffect::Play`.
+- The CC0/Public Domain `Outer Space Loop` by wipics plays quietly in the
+  background. It is loaded with XNA `Song::FromUri`, played by XNA
+  `MediaPlayer`, and repeats continuously. Complete provenance, license, and
+  checksum are stored beside the audio assets.
 
 ## Controls
 
@@ -80,7 +97,8 @@ movement, camera, and collision must read the same player position and heading.
 - After all three cells are collected, reaching `(0,0,-9)` within XZ radius
   `1.4` enters `Won` and awards `1000` additional points.
 - Gameplay fields stop changing in `Won` and `Lost`, except that restart is
-  always accepted.
+  always accepted. Presentation-only pulsing continues behind the terminal
+  panel to make the responsive game loop visible.
 - Restart resets player position and heading, both hazards and velocities,
   collectibles, elapsed time, score, camera, and run state.
 

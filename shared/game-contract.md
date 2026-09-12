@@ -63,8 +63,9 @@ port and are not the game architecture.
 Game-facing production code is limited to the XNA 4.0-style surface exposed by
 CNA or an official CNA binding. Suitable concepts include `Game`, `GameTime`,
 `GraphicsDeviceManager`, `Keyboard`, `Keys`, `Vector3`, `Matrix`,
-`GraphicsDevice`, `BasicEffect`, XNA vertex types, depth/rasterizer states,
-render targets, and sprite/content APIs.
+`GraphicsDevice`, `BasicEffect`, XNA vertex types, depth/rasterizer/blend
+states, render targets, `SoundEffect`, `Song`, `MediaPlayer`, and sprite/content
+APIs.
 
 The game must not include or call CNAEXT, SDL, OpenGL, OpenGL ES, EGL, Vulkan,
 DirectX, EasyGL, or other renderer internals. Renderer selection belongs to CNA

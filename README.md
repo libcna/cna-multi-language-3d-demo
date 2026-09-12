@@ -51,7 +51,9 @@ Collect three gold energy cells, avoid two moving red hazards, and enter the
 green extraction gate before the 60-second timer expires. The scene has a
 perspective heading-relative chase camera, visible floor grid and boundaries,
 procedural meshes, depth testing, and a compact HUD showing cells, time, run
-state, and score.
+state, and score. Collection, loss, victory, and restart have short original
+sound cues loaded through XNA `SoundEffect`. A quiet CC0 ambient space loop
+plays continuously through XNA `Song` and `MediaPlayer`.
 
 Controls:
 
@@ -101,6 +103,10 @@ SDL_VIDEODRIVER=offscreen CNA_GRAPHICS_RENDERER=OPENGLES3 \
 Smoke mode still calls ordinary `Game::Run()` and exits from `Draw` after the
 requested number of frames. It validates real CNA rendering; it is not a
 headless simulation path or a gameplay protocol.
+
+The build copies the runtime content beside `starfield_cpp`. Audio provenance,
+checksums, and license details are in
+[`cpp/content/audio/LICENSE.md`](cpp/content/audio/LICENSE.md).
 
 ## License
 

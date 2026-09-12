@@ -2,6 +2,7 @@
 
 #include <cerrno>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <limits>
 #include <string_view>
@@ -89,6 +90,8 @@ int main(int argc, char** argv)
                      "[--validate-frame] [--screenshot FILE.ppm]\n";
         return 2;
     }
+    options.contentRoot =
+        (std::filesystem::absolute(argv[0]).parent_path() / "Content").string();
 
     starfield::StarfieldGame game(std::move(options));
     game.Run();
