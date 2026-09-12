@@ -1,86 +1,156 @@
-# CNA Starfield Courier — Game Architecture Contract
+# CNA Starfield Courier — Cross-Language Acceptance Contract
 
-This contract defines what counts as an implementation of the shared game.
-It deliberately does not define a headless serialization or stdout protocol.
+This document defines when an implementation qualifies as a port of the real
+Starfield Courier game.
 
-## Canonical architecture
+> A language implementation is a port only if running it starts an actual CNA
+> application and produces the real, playable 3D game.
 
-Every port must be a CNA/XNA application in its target language. For C++, the
-authoritative type is:
+Graphics are part of conformance. A standalone mathematical simulation, stdout
+state machine, binding compile probe, or CNA window that only clears the
+framebuffer is not a port. Matching gameplay numbers without running and
+rendering the game through CNA is also insufficient.
 
-```cpp
-class StarfieldGame final : public Microsoft::Xna::Framework::Game
-```
+## Authority hierarchy
 
-The equivalent type in a future binding must participate in that binding's
-real CNA/XNA lifecycle. The required flow is:
+1. [`game-spec.md`](game-spec.md) is the authoritative gameplay and visual
+   design specification. It defines what Starfield Courier looks like and how
+   it behaves.
+2. The C++ CNA/XNA application under [`../cpp/`](../cpp/) is the executable
+   reference against which later ports are compared.
+3. `c/`, `cs/`, `java/`, `ts/`, `python/`, `rust/`, `go/`, `swift/`, `ruby/`,
+   and `common-lisp/` are reserved for independent implementations through the
+   appropriate CNA binding or public CNA C ABI.
 
-```text
-Game::Run()
-  Initialize() / LoadContent()
-  Update(GameTime) -> CNA keyboard -> live gameplay state
-  Draw(GameTime)   -> that same live gameplay state
-```
+The repository does not define a portable custom game engine, renderer, input
+layer, snapshot transport, or game-specific ABI for all languages to
+reimplement. Internal source organization may differ by language, but CNA must
+remain the application and rendering foundation.
 
-The game class may own small domain types such as `Player`, `Hazard`, and
-`Collectible`, and may delegate focused calculations to ordinary helpers. It
-must remain the lifecycle and ownership boundary. These are not acceptable:
+## Required playable application
 
-- an independent generic game engine under the CNA game;
-- a separately runnable authoritative headless simulator;
-- custom input or snapshot transport between a simulator and CNA;
-- a custom renderer abstraction used instead of XNA graphics APIs;
-- precomputed visual positions that differ from collision positions.
+Every completed port must:
 
-## Lifecycle ownership
+- initialize the real CNA runtime;
+- create a real CNA/XNA game and window;
+- enter the CNA game loop or the equivalent lifecycle exposed by the public
+  CNA binding or C ABI;
+- receive real keyboard input through CNA/XNA;
+- maintain the live player, sector, collectible, hazard, timer, score, camera,
+  win/loss, and restart state used by that lifecycle;
+- update player movement and heading, hazard motion, collection, collisions,
+  sector progression, win, loss, and restart;
+- render actual perspective 3D geometry through CNA, including every arena,
+  player craft, collectible, active hazard, extraction gate, boundary marker,
+  and environment landmark;
+- render the HUD and terminal-state presentation;
+- implement the heading-relative chase camera and all gameplay constants from
+  `game-spec.md`;
+- build, launch, accept input, and be playable as its normal execution mode.
 
-- Construction configures the XNA `GraphicsDeviceManager`, 1280×720 back
-  buffer, fixed timestep, and window.
-- `Initialize` establishes the initial run state and camera.
-- `LoadContent` creates graphics/content resources through XNA-style APIs.
-- `Update(GameTime)` calls `Keyboard::GetState`, handles quit/restart, advances
-  player movement and heading, sector-specific hazards, collectibles,
-  collisions, sector transitions, score, timer, win/loss, and camera.
-- `Draw(GameTime)` applies the perspective camera, depth state, effect, world
-  matrices, and HUD projection to render the fields owned by that game.
-- The executable enters ordinary `Game::Run()`. Finite graphical tests may
-  request exit after a number of real drawn frames, but may not replace the
-  lifecycle with a simulator loop.
+Simulation and rendering must consume the same authoritative positions and
+state. A hazard position calculated separately for drawing is non-conformant,
+even if a screenshot appears plausible.
 
-## Shared state and behavior
+## CNA integration requirement
 
-The exact constants, positions, colors, camera, controls, update order,
-collision radii, scoring, and terminal rules are normative in
-[`game-spec.md`](game-spec.md). Later ports may express their domain data
-differently, but their visible state transitions must match those rules.
+A port must use its language's real CNA-facing API. Use a native CNA language
+binding where one exists. Where a language is intended to consume CNA through
+the public C ABI, use that ABI through the language's appropriate FFI.
 
-There is no canonical serialized `Snapshot`, scenario name set, stable stdout
-field list, or six-field compatibility prefix. Test diagnostics are local to a
-port and are not the game architecture.
+Do not invent a custom cross-language gameplay API to bypass missing binding or
+ABI functionality. If the real binding or C ABI lacks a capability required to
+create the window, run the lifecycle, read input, render the specified 3D game,
+or present its HUD, the port remains `BLOCKED` until that capability is fixed in
+the appropriate CNA or binding repository. A fallback headless simulator does
+not reduce or satisfy that blocker.
 
-## API boundary
+## XNA 4.0 graphics boundary
 
-Game-facing production code is limited to the XNA 4.0-style surface exposed by
-CNA or an official CNA binding. Suitable concepts include `Game`, `GameTime`,
-`GraphicsDeviceManager`, `Keyboard`, `Keys`, `Vector3`, `Matrix`,
-`GraphicsDevice`, `BasicEffect`, XNA vertex types, depth/rasterizer/blend
-states, render targets, `SoundEffect`, `Song`, `MediaPlayer`, and sprite/content
-APIs.
+Game-facing graphics architecture targets the XNA 4.0-style API exposed by
+CNA. Production game code must not rely on:
 
-The game must not include or call CNAEXT, SDL, OpenGL, OpenGL ES, EGL, Vulkan,
-DirectX, EasyGL, or other renderer internals. Renderer selection belongs to CNA
-build/runtime configuration. The unchanged game must run with EasyGL/OpenGL33
-and EasyGL/OpenGLES3.
+- CNAEXT;
+- direct OpenGL or OpenGL ES;
+- Vulkan or DirectX calls;
+- EasyGL or other renderer internals;
+- SDL rendering;
+- a custom renderer abstraction used to bypass CNA.
 
-## Testing contract
+Renderer selection belongs to CNA and its build/runtime configuration. The
+same game implementation must remain renderer-independent and be validated
+with the renderer configurations required by `game-spec.md` and project
+planning.
 
-Tests must fail when gameplay results are wrong, not only when a process exits
-nonzero. Unit access may call the same private gameplay step owned and used by
-the real game class; it must not reproduce that step in a test-only engine.
-Integration tests must run every sector of the actual graphical executable
-through `Game::Run()` and inspect real rendered frames. Screenshot comparisons must
-use pixels read from the actual game render, never generated reference data.
+## Behavioral and visual parity
 
-A port is complete only after its real window, input, simulation, rendering,
-terminal states, restart, and required renderer configurations have been
-validated. Numeric agreement without a CNA game is insufficient.
+Later ports need not reproduce C++ source structure line for line. They must
+match the specification and C++ reference in observable behavior and visuals,
+including:
+
+- world dimensions and sector layouts;
+- player start positions, heading, movement speed, turning speed, and boost;
+- collectible count, locations, appearance, and collection behavior;
+- hazard count, geometry, paths, speeds, and collision dimensions;
+- extraction-gate locations, locking, and progression behavior;
+- perspective field of view, chase-camera offset, aspect ratio, and near/far
+  planes;
+- arena, player, hazard, collectible, gate, landmark, and HUD geometry/colors;
+- HUD semantics, score progression, sector timing, and audio behavior;
+- keyboard controls;
+- win, loss, terminal-state, and full restart behavior.
+
+## Validation contract
+
+Graphical validation is mandatory. A port cannot be marked complete until its
+normal executable has launched the real CNA application and the complete game
+has been exercised. Where practical, validation must include:
+
+- deterministic initial scenes for every sector;
+- known player and camera positions;
+- screenshots or framebuffer captures produced by the running port;
+- comparison with reference captures, including all required renderers;
+- renderer-independent state checks at deterministic gameplay checkpoints;
+- checks that visible player, collectible, hazard, and gate positions equal the
+  positions used by gameplay and collision;
+- gameplay scenarios covering movement, turning, boost, collection, hazard
+  collision, timeout, sector progression, win, loss, and restart;
+- meaningful final-state assertions rather than exit-code-only tests.
+
+Pure numerical tests are useful supplemental coverage for deterministic helper
+logic. They are not the product, are not a portable conformance protocol, and
+cannot replace real lifecycle, input, audio, graphical, and playability checks.
+Generated or synthetic reference images that did not come from the running game
+are not acceptable screenshot evidence.
+
+## Port status vocabulary
+
+- `EMPTY` — the language directory is reserved but contains no implementation.
+- `IN PROGRESS` — real CNA integration has begun, but the graphical playable
+  port or its parity validation is incomplete.
+- `BLOCKED` — a verified missing CNA, binding, or ABI capability prevents the
+  graphical playable port. The exact missing API and evidence must be recorded.
+- `DONE` — the real graphical CNA port builds, launches, is playable, and passes
+  the required behavioral and visual parity checks.
+
+A headless simulator can never qualify as `DONE`.
+
+## Repository status after prototype cleanup
+
+| Language | Status |
+| --- | --- |
+| C++ | Current reference work; its milestone status is governed by project planning |
+| C | EMPTY |
+| C# | EMPTY |
+| Java | EMPTY |
+| TypeScript | EMPTY |
+| Python | EMPTY |
+| Rust | EMPTY |
+| Go | EMPTY |
+| Swift | EMPTY |
+| Ruby | EMPTY |
+| Common Lisp | EMPTY |
+
+The empty directories are intentional placeholders. Each future port must be
+started from scratch against the finished graphical C++ reference; deleted
+prototype code is not a foundation to restore or refactor.

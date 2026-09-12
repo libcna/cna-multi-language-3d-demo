@@ -9,20 +9,20 @@ The C++ reference is the only completed implementation.
 | Language | Status |
 | --- | --- |
 | C++ graphical CNA/XNA reference | **DONE** |
-| C | TODO |
-| C# | TODO |
-| Java | TODO |
-| TypeScript | TODO |
-| Python | TODO |
-| Rust | TODO |
-| Go | TODO |
-| Swift | TODO |
-| Ruby | TODO |
-| Common Lisp | TODO |
+| C | EMPTY |
+| C# | EMPTY |
+| Java | EMPTY |
+| TypeScript | EMPTY |
+| Python | EMPTY |
+| Rust | EMPTY |
+| Go | EMPTY |
+| Swift | EMPTY |
+| Ruby | EMPTY |
+| Common Lisp | EMPTY |
 
-The unfinished language directories are not ports yet. A future port is only
-complete when it implements the real game through CNA or that language's CNA
-binding/ABI; a standalone numerical simulator does not qualify.
+The empty language directories are reserved locations, not ports. A future
+port is only complete when it implements the real game through CNA or that
+language's CNA binding/ABI; a standalone numerical simulator does not qualify.
 
 ## C++ architecture
 

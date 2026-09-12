@@ -8,8 +8,9 @@ repository foundation.
 
 ## Status markers
 
-`TODO` = not started, `WIP` = actively investigated or implemented, `BLOCKED`
-= an evidenced CNA/binding limitation, `DONE` = runtime-verified graphical game.
+`EMPTY` = reserved directory with no implementation, `WIP` = actively
+investigated or implemented, `BLOCKED` = an evidenced CNA/binding limitation,
+`DONE` = runtime-verified graphical game.
 
 ## Task ledger
 
@@ -41,25 +42,25 @@ repository foundation.
 7. **OpenGLES validation — DONE**
    - Ran the unchanged C++ game with the `OPENGLES3` EasyGL profile in real-window and offscreen configurations.
    - The final deterministic `OPENGL33` and `OPENGLES3` captures were byte-identical.
-8. **Pure C graphical CNA implementation — TODO**
+8. **Pure C graphical CNA implementation — EMPTY**
    - Use only the real public CNA C ABI; prove window/loop/input/3D rendering or document the exact ABI blocker.
-9. **C# graphical implementation — TODO**
+9. **C# graphical implementation — EMPTY**
    - Use the real CNA C# binding or a minimal real-C-ABI FFI; no independent simulator milestone.
-10. **Java graphical implementation — TODO**
+10. **Java graphical implementation — EMPTY**
     - Use the real CNA Java binding/native bridge and validate runtime loading and rendering.
-11. **TypeScript graphical implementation — TODO**
+11. **TypeScript graphical implementation — EMPTY**
     - Use the actual CNA TypeScript/native route available in the sibling repository; document unavailable desktop capabilities.
-12. **Python graphical implementation — TODO**
+12. **Python graphical implementation — EMPTY**
     - Use the actual CNA Python binding or minimal C-ABI FFI and render through CNA.
-13. **Rust graphical implementation — TODO**
+13. **Rust graphical implementation — EMPTY**
     - Use the actual CNA Rust binding or minimal C-ABI FFI and validate ownership/lifecycle.
-14. **Go graphical implementation — TODO**
+14. **Go graphical implementation — EMPTY**
     - Use the actual CNA Go binding or minimal C-ABI FFI and validate native loading.
-15. **Swift graphical implementation — TODO**
+15. **Swift graphical implementation — EMPTY**
     - Use the actual CNA Swift/C interop path and validate Linux runtime behavior.
-16. **Ruby graphical implementation — TODO**
+16. **Ruby graphical implementation — EMPTY**
     - Use the actual CNA Ruby FFI path and validate window and render lifecycle.
-17. **Common Lisp graphical implementation — TODO**
+17. **Common Lisp graphical implementation — EMPTY**
     - Use the actual CNA Lisp FFI path and validate interactive rendering.
 18. **Visual/behavior parity testing — WIP**
    - Compare deterministic screenshots/frames and gameplay checkpoints against the C++ reference.
@@ -110,4 +111,5 @@ Common Lisp. Do not generate placeholder ports ahead of the active milestone.
 - A post-milestone playtest exposed poor terminal feedback: `Won` correctly froze gameplay but looked like a hang. The live game now retains presentation animation and displays an explicit, prominent win/loss panel with restart instructions. The procedural scene and HUD were also rebuilt with shaded composite objects and readable text.
 - The initially evaluated NOX recordings were rejected after playtesting and removed. Four clean, original synthesized cues now cover collection, loss, win, and restart through standard XNA `SoundEffect` APIs.
 - Quiet background music uses the unmodified CC0/Public Domain `Outer Space Loop` by wipics. Standard XNA `Song::FromUri` and `MediaPlayer` load, play, and repeat it; its source, license, and checksum are recorded beside the asset.
-- C and all later language implementations remain `TODO` and were not modified.
+- C and all later language directories are `EMPTY` placeholders after removal
+  of the invalid prototypes; no replacement port was started.
