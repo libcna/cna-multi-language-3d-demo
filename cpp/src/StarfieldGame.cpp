@@ -965,17 +965,17 @@ namespace starfield
                 return (static_cast<float>(ReferenceWidth) -
                         (static_cast<float>(length) * 6.0f - 1.0f) * pixelSize) * 0.5f;
             };
-            DrawHudRect(device, pass, 350.0f, 122.0f, 580.0f, 122.0f,
+            DrawHudRect(device, pass, 350.0f, 530.0f, 580.0f, 122.0f,
                         Color(3, 8, 24, 145));
-            DrawHudRect(device, pass, 350.0f, 122.0f, 580.0f, 4.0f,
+            DrawHudRect(device, pass, 350.0f, 530.0f, 580.0f, 4.0f,
                         theme.accent);
-            DrawHudRect(device, pass, 350.0f, 240.0f, 580.0f, 4.0f,
+            DrawHudRect(device, pass, 350.0f, 648.0f, 580.0f, 4.0f,
                         theme.accent);
             DrawText(device, pass, sectorTitle,
-                     centeredX(sectorTitle.size(), 3.0f), 145.0f, 3.0f,
+                     centeredX(sectorTitle.size(), 3.0f), 553.0f, 3.0f,
                      Color(225, 240, 255));
             DrawText(device, pass, sectorName,
-                     centeredX(sectorName.size(), 4.0f), 192.0f, 4.0f,
+                     centeredX(sectorName.size(), 4.0f), 600.0f, 4.0f,
                      theme.accent);
         }
 
