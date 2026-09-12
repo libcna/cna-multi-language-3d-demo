@@ -1,121 +1,70 @@
-# CNA Starfield Courier — Implementation Plan
+# CNA Starfield Courier — Graphical Delivery Ledger
 
-## 1. Definition of done
+This ledger replaces the failed headless prototype. A language is **DONE** only
+when it launches a CNA game/window, enters the CNA loop, accepts real input, and
+renders the playable 3D scene. Numeric simulation tests are secondary evidence.
+All implementation commits belong on `develop`; `main` remains the clean
+repository foundation.
 
-The project is complete when all eleven language directories contain a small,
-buildable implementation of the same game, the C ABI is documented and
-usable, and the implementations pass the same deterministic conformance
-scenarios. The Linux desktop reference renderer is EasyGL; OpenGLES is an
-equivalent backend option and must not change game behavior.
+## Status markers
 
-Every public game-facing operation must map to the XNA 4.0 API model. CNA
-graphics extensions (`CNA.Ext`) must not be used. Renderer-specific details
-must remain below the backend boundary.
+`TODO` = not started, `WIP` = actively investigated or implemented, `BLOCKED`
+= an evidenced CNA/binding limitation, `DONE` = runtime-verified graphical game.
 
-## 2. Shared game specification
+## Task ledger
 
-1. Define a fixed 1280x720 reference presentation and a 3D right-handed world.
-2. Define the scene: an arena, courier drone, three energy cells, hazards, and
-   an extraction ring. Use generated primitives or tiny openly licensed assets.
-3. Define controls: keyboard movement, yaw, boost, restart, and quit. Document
-   key names and frame-independent behavior.
-4. Define the state machine: `Title`, `Playing`, `Won`, and `Lost`.
-5. Define deterministic rules: fixed timestep option, seeded hazard motion,
-   collision radii, score, timer, and restart semantics.
-6. Define the camera, lighting, colors, HUD text, sound policy, and asset names.
-7. Create golden scenarios for startup, collection, hazard collision, win,
-   loss, restart, and renderer-independent simulation.
+1. **Repository repair — WIP**
+   - Keep `main` at the clean foundation commit and move implementation work to `develop`.
+   - Ignore IDE files, build trees, binaries, compiler intermediates, caches, and language outputs.
+   - Make coherent milestone commits; never commit generated output.
+2. **Actual CNA API investigation — WIP**
+   - Read the real public Game, GraphicsDevice, math, input, vertex/index, effect, and lifecycle declarations.
+   - Confirm EasyGL and OpenGLES selection/build procedures from CNA sources and examples.
+   - Prohibit CNAEXT, direct OpenGL calls, and invented APIs in game-facing code.
+3. **Binding inventory — WIP**
+   - Inspect each sibling binding, template, example, native bridge, and test before selecting an adapter.
+   - Record exact missing capabilities as blockers; never claim a headless program is a port.
+4. **Exact shared game specification — WIP**
+   - Define deterministic arena geometry, colors, procedural meshes, object positions, hazards, collisions, timing, score, win/loss/restart, and controls.
+   - Define a third-person perspective camera, FOV, clipping planes, depth, lighting, and reference presentation.
+   - Define optional scripted startup/frame capture mode without replacing interactive play.
+5. **C++ graphical reference implementation — TODO**
+   - Replace the Clear-only shell with the actual CNA Game, input, procedural 3D geometry, camera, depth, lighting, HUD/state, and gameplay.
+   - Keep game-facing rendering strictly XNA 4.0 style and renderer-independent.
+6. **EasyGL validation — TODO**
+   - Build, launch a real window, capture/inspect a deterministic frame, and exercise collect, hazard loss, win, restart, and quit.
+7. **OpenGLES validation — TODO**
+   - Run the same C++ source with CNA’s actual OpenGLES renderer and verify equivalent gameplay and framing.
+8. **Pure C graphical CNA implementation — TODO**
+   - Use only the real public CNA C ABI; prove window/loop/input/3D rendering or document the exact ABI blocker.
+9. **C# graphical implementation — TODO**
+   - Use the real CNA C# binding or a minimal real-C-ABI FFI; no independent simulator milestone.
+10. **Java graphical implementation — TODO**
+    - Use the real CNA Java binding/native bridge and validate runtime loading and rendering.
+11. **TypeScript graphical implementation — TODO**
+    - Use the actual CNA TypeScript/native route available in the sibling repository; document unavailable desktop capabilities.
+12. **Python graphical implementation — TODO**
+    - Use the actual CNA Python binding or minimal C-ABI FFI and render through CNA.
+13. **Rust graphical implementation — TODO**
+    - Use the actual CNA Rust binding or minimal C-ABI FFI and validate ownership/lifecycle.
+14. **Go graphical implementation — TODO**
+    - Use the actual CNA Go binding or minimal C-ABI FFI and validate native loading.
+15. **Swift graphical implementation — TODO**
+    - Use the actual CNA Swift/C interop path and validate Linux runtime behavior.
+16. **Ruby graphical implementation — TODO**
+    - Use the actual CNA Ruby FFI path and validate window and render lifecycle.
+17. **Common Lisp graphical implementation — TODO**
+    - Use the actual CNA Lisp FFI path and validate interactive rendering.
+18. **Visual/behavior parity testing — TODO**
+    - Compare deterministic screenshots/frames and gameplay checkpoints against the C++ reference.
+    - Require perspective, depth, object placement, colors, motion, collisions, and controls to match closely.
+19. **Build documentation — TODO**
+    - Document verified prerequisites and exact build/run commands per language and renderer.
+    - Keep README status limited to evidence-backed `graphical / verified`, `blocked`, or `not started`.
+20. **Final cleanup and verification — TODO**
+    - Remove generated artifacts, verify ignore rules and clean worktree, audit for CNAEXT/direct renderer calls, and run the relevant tests.
 
-## 3. Architecture and interfaces
+## Required implementation order
 
-1. Keep a small platform-neutral core for state, input, simulation, collision,
-   and scoring.
-2. Define an XNA-shaped rendering contract using only concepts available in
-   XNA 4.0: game loop, `GameTime`, `Matrix`, `Vector3`, `Model`, effects,
-   textures, vertex/index buffers, sprite batch, and input services.
-3. Define a narrow renderer service and implement EasyGL first. Add OpenGLES
-   as a second backend only after the EasyGL reference is stable.
-4. Define the C ABI with opaque handles, explicit ownership, fixed-width types,
-   error codes, UTF-8 strings, and a version query. Document ABI size and
-   alignment assumptions.
-5. Keep asset loading, timing, and window integration replaceable; do not let
-   any language binding leak renderer objects into the game core.
-
-## 4. Ordered implementation milestones
-
-### 4.1 C++ reference
-
-Implement the specification in `cpp` using CNA and EasyGL. Add the game loop,
-simulation, XNA-compatible math and rendering calls, HUD, input, generated
-assets, and a deterministic headless mode. Add unit tests for math and game
-state plus a short manual Linux desktop run guide.
-
-### 4.2 C ABI
-
-Implement `c` as the stable façade over the C++ reference. Provide headers,
-versioned symbols, lifecycle functions, input/update/render functions,
-snapshot accessors, and error reporting. Add a C smoke test and ABI example.
-
-### 4.3 C#
-
-Port the game contract to `cs`, preserving XNA 4.0 naming and behavior. Use
-the C ABI only where appropriate, document runtime prerequisites, and compare
-the golden scenarios with the reference.
-
-### 4.4 Java
-
-Implement `java` with a small native bridge or documented ABI adapter. Keep
-the public game model equivalent and add a deterministic test runner.
-
-### 4.5 TypeScript
-
-Implement `ts` with a typed ABI wrapper and a desktop runner. Keep rendering
-behind the same backend contract rather than introducing browser-only rules.
-
-### 4.6 Python
-
-Implement `python` with a thin ctypes/cffi-style wrapper, a headless test
-runner, and the smallest possible desktop launcher.
-
-### 4.7 Go
-
-Implement `go` with explicit ownership around the C ABI and a deterministic
-conformance command.
-
-### 4.8 Ruby
-
-Implement `ruby` with a minimal FFI adapter, matching the shared lifecycle and
-input contract.
-
-### 4.9 Swift
-
-Implement `swift` with a C interop module and Linux desktop instructions.
-Verify value types and UTF-8/error handling at the boundary.
-
-### 4.10 Common Lisp
-
-Implement `common-lisp` with a portable foreign-function interface, keeping
-the renderer optional for headless conformance runs.
-
-## 5. Conformance and quality gates
-
-1. Run formatting, compilation, and focused tests per language.
-2. Run all golden scenarios against every implementation in headless mode.
-3. Compare serialized state snapshots with tolerances documented for floats.
-4. Run a Linux EasyGL visual smoke test and an OpenGLES smoke test when the
-   second backend is available.
-5. Check that no game-facing source includes CNA.Ext APIs.
-6. Check memory ownership, ABI versioning, error paths, restart behavior, and
-   clean shutdown.
-7. Keep examples short, build instructions reproducible, and each milestone
-   reviewable in a separate commit on `develop`.
-
-## 6. Suggested delivery sequence
-
-1. Establish the reference specification and repository conventions.
-2. Finish the C++/EasyGL reference and headless tests.
-3. Freeze and document the C ABI.
-4. Port languages in this order: C#, Java, TypeScript, Python, Go, Ruby,
-   Swift, and Common Lisp.
-5. Add OpenGLES parity and final cross-language reports.
-6. Tag a small MIT-licensed demonstration release from `main` after review.
+C++ → C → C# → Java → TypeScript → Python → Rust → Go → Swift → Ruby →
+Common Lisp. Do not generate placeholder ports ahead of the active milestone.
