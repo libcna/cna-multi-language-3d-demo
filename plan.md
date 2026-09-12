@@ -62,13 +62,13 @@ investigated or implemented, `BLOCKED` = an evidenced CNA/binding limitation,
     - Use the actual CNA Ruby FFI path and validate window and render lifecycle.
 17. **Common Lisp graphical implementation — EMPTY**
     - Use the actual CNA Lisp FFI path and validate interactive rendering.
-18. **Visual/behavior parity testing — WIP**
-   - Compare deterministic screenshots/frames and gameplay checkpoints against the C++ reference.
-   - Require perspective, depth, object placement, colors, motion, collisions, and controls to match closely.
-   - The rebuilt C++ application retains only finite graphical smoke/capture support that still enters `Game::Run()`; the old headless scenario protocol is removed.
-19. **Build documentation — WIP**
-    - Document verified prerequisites and exact build/run commands per language and renderer.
-    - Keep README status limited to evidence-backed `graphical / verified`, `blocked`, or `not started`.
+18. **Visual/behavior parity testing — DONE for C++ reference**
+   - Revalidated deterministic screenshots and gameplay checkpoints after the HUD and sector-banner changes.
+   - All three 1280×720 sector captures are byte-identical between `OPENGL33` and `OPENGLES3`; current hashes are recorded below and in `BUILDING.md`.
+   - The finite graphical capture support still enters `Game::Run()`; it is not a separate simulation path.
+19. **Build documentation — DONE for current repository**
+    - `BUILDING.md` records verified prerequisites, sibling layout, configure/build/run commands, the seven-test matrix, both renderer profiles, capture parity, and build-output policy.
+    - Empty future language directories intentionally have no speculative build instructions until real CNA ports exist.
 20. **Final cleanup and verification — DONE for C++ milestone**
     - Generated artifacts remain ignored, source audits are clean, both renderers are runtime-verified, and all C++ tests pass.
 
@@ -103,9 +103,10 @@ Common Lisp. Do not generate placeholder ports ahead of the active milestone.
 - `cpp/src/StarfieldGame.cpp` owns reset, resource creation, CNA keyboard reads, simulation, player movement/heading, chase camera, sector loading, up to three active hazard objects, collectibles, collision, timer, score, win/loss/restart, world rendering, and HUD rendering. `Draw` reads the same object fields collision uses; there is no snapshot copy.
 - The default CMake project requires the sibling CNA source and builds `starfield_cpp` as the CNA application. The old `starfield_core`, headless `starfield_cpp`, optional `starfield_cna`, scenarios, custom `Game`, `Input`, `Snapshot`, and `Renderer` are gone.
 - `cpp_gameplay` tests the actual `StarfieldGame` fields and private gameplay step. It passed initial state, turning, heading-relative movement, heading-following camera, authoritative collision, a safe continuous 60 Hz first-sector route, horizontal/vertical/orbital enemies, all three transitions, the `800 → 1600 → 2900` score progression, final win, terminal freeze, 60 Hz timeout, and full campaign restart.
-- Six graphical tests enter ordinary `Game::Run()` and validate all three 1280x720 sector frames under both OpenGL33 and OpenGLES3. Together with `cpp_gameplay`, final CTest result is 7/7 passed.
+- After the HUD and sector-banner changes, six graphical tests again entered ordinary `Game::Run()` and validated all three 1280x720 sector frames under both OpenGL33 and OpenGLES3. Together with `cpp_gameplay`, both the existing Release build and a fresh out-of-tree Release build passed 7/7 tests on 2026-09-12.
+- The clean documentation build was verified with CMake 3.31.6, Ninja 1.12.1, GCC 14.2.0, CNA `0a3a14601`, and sharp-runtime `0c82d9b8`; no future language port was configured or built.
 - OpenGL33 initialized as EasyGL/OpenGL 4.5 offscreen and OpenGL 4.6 in the X11 window. The 1280x720 capture was visually inspected. Real `D` then `W` input produced heading `1.30899`, position `(1.60987,-0.431371)`, and a correspondingly rotated chase view; `R` restored position and heading to zero; Escape left `Game::Run()`.
-- OpenGLES3 initialized as EasyGL/OpenGL ES 3.2 both offscreen and in an X11 run. Every validated sector capture is byte-identical to OpenGL33. Sector SHA-256 values are `0473210d005b2f955d936746f4f2ae7f64015af24d2e854cb54309a6851ef386`, `d5ea110d60c39ed44c2b2e1982b24f151400a963e57a5d59aa15912145e51573`, and `2669a1362ab5ee8d6a154183ae5c3e437408d581f3f4eb57828d49d1a66d3e55`.
+- OpenGLES3 initialized as EasyGL/OpenGL ES 3.2 both offscreen and in an X11 run. The post-HUD/banner captures are byte-identical to OpenGL33. Current sector SHA-256 values are `b27fa0afd06276c7e834063a6c5f60dc1bcd9adcce65213f7805b451c27812ef`, `4194f8122c62c60f5d1a3a1de50b196581a6e158f60a8fe3ee86188ead0ba9f3`, and `750f61951f95bc58ef3c90f247d4d23aef37f76507c7b7e8e933bbdf7ad0ed9d`.
 - The final production-source audit found no `CNAEXT`/`cnaext`, `RunOneFrame`, CNA-specific namespace call, direct GL/GLES/EGL/SDL/Vulkan/DirectX include or call, renderer branch, custom generic `Game`, custom `Renderer`, custom `Input`, custom `Snapshot`, `run_scenario`, `starfield_core`, or `starfield_cna`.
 - No CNA defect or missing capability was encountered. No CNA-specific API remains in production game code; the finite capture option also exits from `Draw` while the executable remains inside normal `Game::Run()`.
 - A post-milestone playtest exposed poor terminal feedback: `Won` correctly froze gameplay but looked like a hang. The live game now retains presentation animation and displays an explicit, prominent win/loss panel with restart instructions. The procedural scene and HUD were also rebuilt with shaded composite objects and readable text.

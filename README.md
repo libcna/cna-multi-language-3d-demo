@@ -75,8 +75,12 @@ and the port architecture contract is in
 
 ## Build and run
 
-The C++ game requires the neighboring CNA checkout. A default configure builds
-CNA into the C++ game; CNA is not an optional frontend:
+Complete prerequisites, sibling-repository layout, renderer selection,
+validation, capture parity, and build-output policy are documented in
+[BUILDING.md](BUILDING.md).
+
+The C++ game requires CNA and CNA's sibling dependencies. A default configure
+builds CNA into the C++ game; CNA is not an optional frontend:
 
 ```sh
 cmake -S . -B build/cna-game -G Ninja \
@@ -97,11 +101,13 @@ ctest --test-dir build/cna-game -L cpp --output-on-failure
 Capture and validate frames rendered by the actual game lifecycle:
 
 ```sh
-SDL_VIDEODRIVER=offscreen CNA_GRAPHICS_RENDERER=OPENGL33 \
+SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
+  CNA_GRAPHICS_RENDERER=OPENGL33 \
   ./build/cna-game/cpp/starfield_cpp --smoke-frames 1 \
   --validate-frame --screenshot build/cna-game/starfield-opengl33.ppm
 
-SDL_VIDEODRIVER=offscreen CNA_GRAPHICS_RENDERER=OPENGLES3 \
+SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
+  CNA_GRAPHICS_RENDERER=OPENGLES3 \
   ./build/cna-game/cpp/starfield_cpp --smoke-frames 1 \
   --validate-frame --screenshot build/cna-game/starfield-opengles3.ppm
 ```
