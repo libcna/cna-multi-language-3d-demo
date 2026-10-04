@@ -609,7 +609,7 @@ namespace starfield
             Pi / 4.0f,
             static_cast<float>(ReferenceWidth) / static_cast<float>(ReferenceHeight),
             0.1f, 100.0f);
-        auto& pass = effect_->getTechniquesProperty()[0].getPassesProperty()[0];
+        auto& pass = *effect_->getTechniquesProperty()[0]->getPassesProperty()[0];
 
         DrawStarfield(device, pass);
         DrawArena(device, pass);
@@ -884,7 +884,7 @@ namespace starfield
         effect_->Projection = Matrix::CreateOrthographicOffCenter(
             0.0f, static_cast<float>(ReferenceWidth),
             static_cast<float>(ReferenceHeight), 0.0f, 0.0f, 10.0f);
-        auto& pass = effect_->getTechniquesProperty()[0].getPassesProperty()[0];
+        auto& pass = *effect_->getTechniquesProperty()[0]->getPassesProperty()[0];
         device.setBlendStateProperty(xna::Graphics::BlendState::AlphaBlend);
 
         DrawHudRect(device, pass, 22.0f, 18.0f, 435.0f, 88.0f,

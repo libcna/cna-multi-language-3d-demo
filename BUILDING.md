@@ -1,51 +1,41 @@
 # Building and validating Starfield Courier
 
-## Current build scope
-
-Only the C++ CNA/XNA reference is implemented. The root CMake project builds
-that application and embeds CNA with `add_subdirectory`; CNA is not an optional
-viewer around another executable. The other language directories contain only
-`.gitkeep` and intentionally have no build commands yet.
-
-Run every command below from the repository root.
+Run the commands below from the repository root. Generated output belongs
+under `build/`, `bin/`, or `obj/` and must not be committed.
 
 ## Prerequisites
 
-The currently validated configuration is Linux with EasyGL's `OPENGL33` and
-`OPENGLES3` profiles. It requires:
+The validated development configuration is Linux with:
 
-- CMake 3.20 or newer (the embedded CNA project sets the effective minimum);
-- a C++23-capable compiler, such as GCC 12+ or Clang 15+;
-- Ninja for the commands below, or another CMake generator if preferred;
-- Git checkouts of CNA and its required sibling projects;
-- an OpenGL 3.3 or OpenGL ES 3-capable driver for interactive use.
+- CMake 3.20 or newer and Ninja;
+- a C++23 compiler and a C99 compiler;
+- .NET SDK 8.0 or newer;
+- sibling CNA, sharp-runtime, EasyGL, and meta-gl checkouts;
+- a sibling CNA.NET (`cna-cs`) checkout for the C# CNA build;
+- an OpenGL 3.3 or OpenGL ES 3-capable driver.
 
-The default sibling layout is:
+The expected source layout is:
 
 ```text
 parent/
 ├── cna-multi-language-3d-demo/
 ├── cna/
+├── cna-cs/
 ├── sharp-runtime/
 ├── easy-gl/
 └── meta-gl/
 ```
 
-CNA also requires its vendored dependencies. Initialize them in the CNA
-checkout before the first build:
+Initialize CNA's vendored dependencies before its first build:
 
 ```sh
 git -C ../cna submodule update --init --recursive
 ```
 
-CNA builds SDL3, SDL3_image, and SDL3_mixer from those vendored sources by
-default. Its optional video dependency remains in `AUTO` mode and is not
-required by this game. See CNA's own build documentation when using a custom
-dependency layout or system SDL packages.
+## C++ and C
 
-## Configure, build, and play
-
-Configure both validated renderer profiles into one out-of-tree Release build:
+Configure CNA with the C API and both validated renderer profiles. The demo's
+root project enables the C API automatically:
 
 ```sh
 cmake -S . -B build/cna-game -G Ninja \
@@ -55,94 +45,144 @@ cmake -S . -B build/cna-game -G Ninja \
   -DCNA_GRAPHICS_RENDERERS="OPENGL33;OPENGLES3"
 ```
 
-`CNA_GRAPHICS_RENDERER` selects the default profile and
-`CNA_GRAPHICS_RENDERERS` determines which profiles are compiled in. Build the
-playable application and its tests:
+Build both applications and both gameplay test executables:
 
 ```sh
-cmake --build build/cna-game --target starfield_cpp starfield_cpp_tests
+cmake --build build/cna-game \
+  --target starfield_cpp starfield_cpp_tests starfield_c starfield_c_tests
 ```
 
-Launch either compiled renderer without changing game code:
+Run interactively:
 
 ```sh
 CNA_GRAPHICS_RENDERER=OPENGL33 ./build/cna-game/cpp/starfield_cpp
-CNA_GRAPHICS_RENDERER=OPENGLES3 ./build/cna-game/cpp/starfield_cpp
+./build/cna-game/c/starfield_c
 ```
 
-The `starfield_content` build dependency refreshes
-`build/cna-game/cpp/Content` automatically, including the audio files. Run the
-binary from another working directory only if its adjacent `Content` directory
-remains available.
-
-## Automated validation
-
-Run the complete C++ validation suite:
+The CMake suite contains eleven native tests: seven for the C++ reference and
+four for the C port. It includes deterministic gameplay and a real
+`Game::Run()`/C-lifecycle frame from every sector. CNA contributors should use
+the isolated GPU runner instead of the owner's desktop:
 
 ```sh
-ctest --test-dir build/cna-game -L cpp --output-on-failure
+../cna/tools/platform/run_gpu_tests_private.sh \
+  "$PWD/build/cna-game" -L '^(cpp|c)$' --output-on-failure -j4
 ```
 
-The suite contains seven tests:
+## C# on CNA.NET
 
-- one deterministic gameplay test against the real `StarfieldGame` state;
-- three actual `Game::Run()` frame tests for sectors 1–3 with `OPENGL33`;
-- three actual `Game::Run()` frame tests for sectors 1–3 with `OPENGLES3`.
+The application and gameplay test project each compile the same
+`cs/StarfieldGame.cs`. Point the projects at the CNA.NET checkout:
 
-CTest supplies the offscreen video and dummy audio environment for graphical
-tests. Individual groups can be selected with `-L gameplay`, `-L opengl33`, or
-`-L opengles3`.
+```sh
+CNA_CS_ROOT="$PWD/../cna-cs" dotnet build cs/StarfieldCourier.csproj \
+  -c Release -p:Engine=CNA
+CNA_CS_ROOT="$PWD/../cna-cs" dotnet build cs/StarfieldCourier.GameplayTests.csproj \
+  -c Release -p:Engine=CNA
+```
 
-## Capture and renderer parity
+On Linux, identify the C API library produced by the embedded CNA build:
 
-Capture the deterministic initial frame of every sector from the real game
-lifecycle:
+```text
+build/cna-game/cna/modules/c-api/libcna_c_api.so
+```
+
+Run the game or test with that exact library:
+
+```sh
+CNA_NATIVE_LIBRARY="$PWD/build/cna-game/cna/modules/c-api/libcna_c_api.so" \
+  dotnet cs/bin/StarfieldCourier/CNA/Release/net8.0/starfield_cs.dll
+
+CNA_NATIVE_LIBRARY="$PWD/build/cna-game/cna/modules/c-api/libcna_c_api.so" \
+  dotnet cs/bin/StarfieldCourier.GameplayTests/CNA/Release/net8.0/\
+starfield_cs_gameplay_tests.dll
+```
+
+The corresponding Windows library is `cna_c_api.dll`; use its absolute path
+for `CNA_NATIVE_LIBRARY`. CNA.NET's migration guide documents complete source
+builds and deployment for Linux, Windows, browser, and Android:
+[migrating-xna-games.md](https://github.com/libcna/cna-cs/blob/develop/docs/migrating-xna-games.md).
+
+## C# on FNA
+
+An FNA build is a differential oracle, not a second C# implementation. Build
+FNA and set `FNA_FRAMEWORK_PATH` to its compatible `FNA.dll`:
+
+```sh
+FNA_FRAMEWORK_PATH=/absolute/path/to/FNA.dll \
+  dotnet build cs/StarfieldCourier.csproj -c Release -p:Engine=FNA
+FNA_FRAMEWORK_PATH=/absolute/path/to/FNA.dll \
+  dotnet build cs/StarfieldCourier.GameplayTests.csproj \
+  -c Release -p:Engine=FNA
+```
+
+Make FNA's native libraries available through the platform loader, then run:
+
+```sh
+LD_LIBRARY_PATH=/absolute/path/to/fna/native \
+  dotnet cs/bin/StarfieldCourier/FNA/Release/net8.0/starfield_cs.dll
+
+LD_LIBRARY_PATH=/absolute/path/to/fna/native \
+  dotnet cs/bin/StarfieldCourier.GameplayTests/FNA/Release/net8.0/\
+starfield_cs_gameplay_tests.dll
+```
+
+The native package must provide the SONAMEs requested by its FNA build, for
+example `libFNA3D.so.0` and `libFAudio.so.0`. Missing SONAME links are a local
+FNA packaging problem, not a change to make in the shared game source.
+
+## Managed graphical validation
+
+Both managed configurations support the same finite validation arguments:
+
+```text
+--smoke-frames COUNT --validate-frame --start-sector 1|2|3
+--screenshot FILE.ppm
+```
+
+For each engine, run all three sectors and require `frame_valid=true`. Example
+for CNA.NET:
+
+```sh
+for sector in 1 2 3; do
+  CNA_NATIVE_LIBRARY="$PWD/build/cna-game/cna/modules/c-api/libcna_c_api.so" \
+    dotnet cs/bin/StarfieldCourier/CNA/Release/net8.0/starfield_cs.dll \
+      --smoke-frames 1 --validate-frame --start-sector "$sector"
+done
+```
+
+The finite mode still enters the ordinary XNA `Game.Run()` lifecycle and exits
+from `Draw`; it is not a separate simulator. On 2026-10-04 the CNA.NET and FNA
+builds both passed their gameplay executable and `frame_valid=true` for all
+three sectors in CNA's private real-GPU Weston/Xwayland runner. CNA.NET used
+the CNA OpenGL 3.3 renderer; the local FNA build used its Vulkan backend.
+
+## C++ renderer capture parity
+
+The C++ reference additionally supports deterministic PPM captures. Capture
+every sector under both CNA renderers:
 
 ```sh
 mkdir -p build/cna-game/captures
 for renderer in OPENGL33 OPENGLES3; do
   for sector in 1 2 3; do
-    SDL_VIDEODRIVER=offscreen \
-    SDL_AUDIODRIVER=dummy \
+    SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
     CNA_GRAPHICS_RENDERER="$renderer" \
       ./build/cna-game/cpp/starfield_cpp \
-        --smoke-frames 1 \
-        --validate-frame \
-        --start-sector "$sector" \
+        --smoke-frames 1 --validate-frame --start-sector "$sector" \
         --screenshot "build/cna-game/captures/${renderer}-sector${sector}.ppm"
   done
 done
 ```
 
-Each successful run reports `frame_valid=true` and writes a 1280×720 PPM read
-back from CNA's render target. Compare renderer output and calculate checksums:
+Reference captures recorded on 2026-09-12 were byte-identical between
+OpenGL 3.3 and OpenGL ES 3 on that machine:
 
-```sh
-for sector in 1 2 3; do
-  cmp "build/cna-game/captures/OPENGL33-sector${sector}.ppm" \
-      "build/cna-game/captures/OPENGLES3-sector${sector}.ppm"
-done
-sha256sum build/cna-game/captures/*.ppm
-```
-
-The reference captures recorded on 2026-09-12 after the HUD and sector-banner
-changes were byte-identical between renderers:
-
-| Sector | SHA-256 for both renderer captures |
+| Sector | SHA-256 |
 | --- | --- |
 | 1 — Starport | `b27fa0afd06276c7e834063a6c5f60dc1bcd9adcce65213f7805b451c27812ef` |
 | 2 — Ion Basin | `4194f8122c62c60f5d1a3a1de50b196581a6e158f60a8fe3ee86188ead0ba9f3` |
 | 3 — Solar Forge | `750f61951f95bc58ef3c90f247d4d23aef37f76507c7b7e8e933bbdf7ad0ed9d` |
 
-These hashes record the verified Mesa environment and current game revision.
-Other conformant drivers may rasterize small edge details differently, so a
-cross-machine mismatch requires visual investigation rather than automatic
-failure. Equality between both renderer profiles on the same machine remains
-the local parity check.
-
-## Build-output policy
-
-Use an out-of-tree directory under `build/` or named `build-*`; both forms are
-ignored by Git. Do not commit executables, CMake caches, copied content, capture
-PPMs, or dependency build products. The PNG shown in the main README is the
-intentional documentation screenshot and is the only committed capture.
+Conformant drivers may rasterize edge details differently; investigate a
+cross-machine hash difference visually instead of assuming failure.

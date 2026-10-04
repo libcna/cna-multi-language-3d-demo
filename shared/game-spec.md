@@ -1,9 +1,9 @@
 # CNA Starfield Courier — Shared Graphical Game Specification
 
-This specification describes one real-time third-person 3D game. Each future
-language implementation must create and run the game through CNA or its CNA
-binding. The visible game—not a separate command-line simulation—is the shared
-reference.
+This specification describes the real-time third-person 3D game implemented by
+the repository's C++, C, and C# ports. Each implementation creates and runs
+the game through CNA or an XNA-compatible runtime. The visible game—not a
+separate command-line simulation—is the shared reference.
 
 ## Presentation and world
 

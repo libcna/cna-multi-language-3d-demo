@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>starfield_cs_gameplay_tests</AssemblyName>
+    <CnaCsRoot Condition="'$(CnaCsRoot)' == '' and '$(CNA_CS_ROOT)' != ''">$(CNA_CS_ROOT)</CnaCsRoot>
+    <FnaFrameworkPath Condition="'$(FnaFrameworkPath)' == '' and '$(FNA_FRAMEWORK_PATH)' != ''">$(FNA_FRAMEWORK_PATH)</FnaFrameworkPath>
+  </PropertyGroup>
+  <ItemGroup><Compile Include="StarfieldGame.cs" /><Compile Include="GameplayTests.cs" /></ItemGroup>
+  <ItemGroup Condition="'$(Engine)' == 'CNA' and '$(CnaCsRoot)' != ''"><ProjectReference Include="$(CnaCsRoot)/src/CNA.XnaCompat/CNA.XnaCompat.csproj" /></ItemGroup>
+  <ItemGroup Condition="'$(Engine)' == 'FNA' and '$(FnaFrameworkPath)' != ''"><Reference Include="FNA" HintPath="$(FnaFrameworkPath)" Private="true" /></ItemGroup>
+  <Target Name="ValidateCnaReference" BeforeTargets="ResolveProjectReferences" Condition="'$(Engine)' == 'CNA'"><Error Condition="'$(CnaCsRoot)' == '' or !Exists('$(CnaCsRoot)/src/CNA.XnaCompat/CNA.XnaCompat.csproj')" Text="Set CNA_CS_ROOT or CnaCsRoot to the cna-cs checkout." /></Target>
+  <Target Name="ValidateFnaReference" BeforeTargets="ResolveReferences" Condition="'$(Engine)' == 'FNA'"><Error Condition="'$(FnaFrameworkPath)' == '' or !Exists('$(FnaFrameworkPath)')" Text="Set FNA_FRAMEWORK_PATH or FnaFrameworkPath to FNA.dll." /></Target>
+  <Import Project="$(CnaCsRoot)/src/CNA.XnaCompat/build/CNA.XnaCompat.targets" Condition="'$(Engine)' == 'CNA' and '$(CnaCsRoot)' != ''" />
+</Project>

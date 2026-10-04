@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(cna_starfield_courier LANGUAGES CXX)
+project(cna_starfield_courier LANGUAGES C CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 enable_testing()
@@ -18,9 +18,10 @@ if(NOT DEFINED CNA_GRAPHICS_RENDERERS)
         "CNA renderers compiled for the C++ reference")
 endif()
 
-set(CNA_BUILD_C_API OFF CACHE BOOL "" FORCE)
+set(CNA_BUILD_C_API ON CACHE BOOL "" FORCE)
 set(CNA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(CNA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory("${CNA_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/cna" EXCLUDE_FROM_ALL)
 
 add_subdirectory(cpp)
+add_subdirectory(c)

@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <Engine Condition="'$(Engine)' == ''">CNA</Engine>
+    <BaseIntermediateOutputPath>obj/$(MSBuildProjectName)/$(Engine)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin/$(MSBuildProjectName)/$(Engine)/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

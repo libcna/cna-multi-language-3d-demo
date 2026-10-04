@@ -1,86 +1,74 @@
-# CNA Cross-Language 3D Demo
+# CNA multi-language 3D demo
 
-This repository defines one small third-person 3D game to demonstrate CNA,
-the C++ reimplementation of the XNA 4.0 API, and its future language bindings.
-The C++ reference is the only completed implementation.
+This repository implements **CNA Starfield Courier** in exactly three
+languages:
 
-## Current status
+| Language | Runtime/API | Status |
+| --- | --- | --- |
+| C++ | CNA's XNA 4.0-style C++ API | **DONE** |
+| C | CNA C ABI | **DONE** |
+| C# | one XNA 4.0 source compiled against CNA.NET and FNA | **DONE** |
 
-| Language | Status |
-| --- | --- |
-| C++ graphical CNA/XNA reference | **DONE** |
-| C | EMPTY |
-| C# | EMPTY |
-| Java | EMPTY |
-| TypeScript | EMPTY |
-| Python | EMPTY |
-| Rust | EMPTY |
-| Go | EMPTY |
-| Swift | EMPTY |
-| Ruby | EMPTY |
-| Common Lisp | EMPTY |
+No additional language ports are planned here. The earlier placeholder
+directories for other languages were removed when this finite three-language
+scope was completed.
 
-The empty language directories are reserved locations, not ports. A future
-port is only complete when it implements the real game through CNA or that
-language's CNA binding/ABI; a standalone numerical simulator does not qualify.
-
-## C++ architecture
-
-The authoritative application is
-`starfield::StarfieldGame final : Microsoft::Xna::Framework::Game`.
-`Initialize` resets the live game state, `LoadContent` creates the XNA
-`BasicEffect` and optional capture resources, `Update(GameTime&)` reads
-`Keyboard::GetState()` and owns all gameplay changes, and `Draw(GameTime)`
-renders those same live player, hazard, collectible, camera, score, and state
-fields.
-
-There is no independent `Game`, renderer abstraction, snapshot transport,
-scenario engine, or headless C++ executable. `starfield_game` is only a static
-library packaging the actual `StarfieldGame` class for the application and its
-tests; it cannot run independently. `starfield_cpp` is the CNA/XNA game.
-
-Game-facing production code uses public XNA 4.0-style CNA APIs only. It does
-not use CNAEXT, SDL, OpenGL/GLES/EGL headers, or renderer internals. EasyGL's
-OpenGL33 and OpenGLES3 profiles are selected by CNA configuration without any
-renderer branch in the game source.
-
-## Game
+## The game
 
 ![CNA Starfield Courier running the Ion Basin sector](docs/images/starfield-courier.png)
 
-**CNA Starfield Courier** is now a compact three-sector campaign. In each
-bounded 20×20 arena, collect three gold energy cells, avoid moving hazards,
-and enter the green extraction gate before that sector's 60-second timer
-expires. Starport has crossing patrols, Ion Basin adds a vertical sweeper and
-an orbital drone, and Solar Forge combines all three enemy motion types at
-higher speed. Each sector has its own palette, layout, gate, and boundary
-landmarks. The scene has a
-perspective heading-relative chase camera, visible floor grid and boundaries,
-procedural meshes, depth testing, and a compact HUD showing cells, time, run
-state, sector, and score. Collection, loss, victory, and restart have short original
-sound cues loaded through XNA `SoundEffect`. A quiet CC0 ambient space loop
-plays continuously through XNA `Song` and `MediaPlayer`.
+Starfield Courier is a compact third-person 3D campaign. Each of its three
+20×20 sectors contains three energy cells, moving hazards, a timed extraction
+gate, a heading-relative chase camera, procedural `BasicEffect` geometry, a
+HUD, and original sound cues. The game uses standard XNA-style lifecycle,
+graphics, input, and audio APIs.
 
 Controls:
 
-- `W`/Up and `S`/Down move forward and backward relative to the craft heading.
+- `W`/Up and `S`/Down move relative to the craft heading.
 - `A`/Left and `D`/Right turn.
 - Space boosts movement.
 - `R` or Enter restarts.
 - Escape exits.
 
-The exact shared world and behavior are in [shared/game-spec.md](shared/game-spec.md)
-and the port architecture contract is in
+The shared rules and validation requirements are documented in
+[shared/game-spec.md](shared/game-spec.md) and
 [shared/game-contract.md](shared/game-contract.md).
 
-## Build and run
+## Implementations
 
-Complete prerequisites, sibling-repository layout, renderer selection,
-validation, capture parity, and build-output policy are documented in
-[BUILDING.md](BUILDING.md).
+### C++
 
-The C++ game requires CNA and CNA's sibling dependencies. A default configure
-builds CNA into the C++ game; CNA is not an optional frontend:
+`cpp/` contains the CNA reference application. `StarfieldGame` derives from
+`Microsoft::Xna::Framework::Game`; its ordinary lifecycle owns both gameplay
+and rendering. The source is renderer-independent and is validated with CNA's
+OpenGL 3.3 and OpenGL ES 3 profiles.
+
+### C
+
+`c/StarfieldGame.c` is a C99 application built directly on the public CNA C
+ABI. It creates the CNA game and graphics manager, installs lifecycle
+callbacks, reads CNA keyboard state, renders `BasicEffect` geometry through
+the C binding, and uses the C audio/media APIs. Its deterministic test compiles
+the same gameplay source with a test entry point; the graphical executable is
+also validated in all three sectors.
+
+### C#
+
+`cs/StarfieldGame.cs` is the single game implementation used by both engines.
+There are no `CNA`, `FNA`, or engine-specific conditional compilation paths in
+the game source. The project selects either:
+
+- CNA.NET's `CNA.XnaCompat` project with `-p:Engine=CNA`; or
+- an XNA-compatible FNA assembly with `-p:Engine=FNA`.
+
+Both configurations run the same lifecycle, gameplay, `BasicEffect` scene,
+input, audio, and framebuffer validation. This makes the demo a compact
+differential example for migrating ordinary XNA 4.0-style C# code to CNA.NET.
+
+## Quick build
+
+With sibling `cna`, `cna-cs`, and dependency checkouts available:
 
 ```sh
 cmake -S . -B build/cna-game -G Ninja \
@@ -88,41 +76,19 @@ cmake -S . -B build/cna-game -G Ninja \
   -DCNA_SOURCE_DIR=../cna \
   -DCNA_GRAPHICS_RENDERER=OPENGL33 \
   -DCNA_GRAPHICS_RENDERERS="OPENGL33;OPENGLES3"
-cmake --build build/cna-game --target starfield_cpp starfield_cpp_tests
-./build/cna-game/cpp/starfield_cpp
+cmake --build build/cna-game \
+  --target starfield_cpp starfield_cpp_tests starfield_c starfield_c_tests
+
+CNA_CS_ROOT="$PWD/../cna-cs" dotnet build cs/StarfieldCourier.csproj \
+  -c Release -p:Engine=CNA
 ```
 
-Run all C++ behavior and graphics checks:
+Full native and managed build, run, FNA differential, and validation commands
+are in [BUILDING.md](BUILDING.md).
 
-```sh
-ctest --test-dir build/cna-game -L cpp --output-on-failure
-```
-
-Capture and validate frames rendered by the actual game lifecycle:
-
-```sh
-SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
-  CNA_GRAPHICS_RENDERER=OPENGL33 \
-  ./build/cna-game/cpp/starfield_cpp --smoke-frames 1 \
-  --validate-frame --screenshot build/cna-game/starfield-opengl33.ppm
-
-SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
-  CNA_GRAPHICS_RENDERER=OPENGLES3 \
-  ./build/cna-game/cpp/starfield_cpp --smoke-frames 1 \
-  --validate-frame --screenshot build/cna-game/starfield-opengles3.ppm
-```
-
-For renderer QA, append `--start-sector 1`, `2`, or `3` to capture a specific
-environment. This still runs that sector through ordinary `Game::Run()`; it is
-not a separate simulation path.
-
-Smoke mode still calls ordinary `Game::Run()` and exits from `Draw` after the
-requested number of frames. It validates real CNA rendering; it is not a
-headless simulation path or a gameplay protocol.
-
-The build copies the runtime content beside `starfield_cpp`. Audio provenance,
-checksums, and license details are in
-[`cpp/content/audio/LICENSE.md`](cpp/content/audio/LICENSE.md).
+The build copies the shared runtime content beside each application. Audio
+provenance and licensing are recorded in
+[cpp/content/audio/LICENSE.md](cpp/content/audio/LICENSE.md).
 
 ## License
 
